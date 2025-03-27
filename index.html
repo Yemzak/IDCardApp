@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ID Card Generator</title>
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Required Libraries -->
+    <script src="qrcode.min.js"></script>
+    <script src="xlsx.full.min.js"></script> <!-- Excel Handling -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script> <!-- JSZip for ZIP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <!-- FileSaver.js for ZIP Download -->
+</head>
+
+<body>
+    <h1>ID Card Generator</h1>
+
+    <div class="container">
+        <div class="form-container">
+            <h2>Single ID Generation</h2>
+            <form id="idForm">
+                <label for="name">Name:</label>
+                <input type="text" id="name" placeholder="Enter Name" required><br>
+
+                <label for="dob">Date of Birth:</label>
+                <input type="date" id="dob" required><br>
+
+                <label for="bloodGroup">Blood Group:</label>
+                <input type="text" id="bloodGroup" placeholder="Enter Blood Group" required><br>
+
+                <label for="cin">CIN:</label>
+                <input type="text" id="cin" placeholder="Enter CIN" required><br>
+
+                <label for="photo">Upload Photo:</label>
+                <input type="file" id="photo" accept="image/*" required><br>
+
+                <button type="button" onclick="generateIDCard()">Generate ID Card</button>
+                <button type="button" onclick="downloadIDCard()">Download</button>
+                <button type="button" onclick="printIDCard()">Print</button>
+            </form>
+        </div>
+
+        <div class="form-container">
+            <h2>Bulk ID Generation</h2>
+            <input type="file" id="bulkFile" accept=".xlsx, .xls">
+            <button type="button" onclick="generateBulkIDCards()">Generate Bulk</button>
+            <button type="button" id="downloadBulkBtn" style="display:none;" onclick="downloadBulkIDCards()">Download
+                All</button>
+        </div>
+    </div>
+
+    <canvas id="idCardCanvas" width="600" height="400"></canvas>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
