@@ -53,7 +53,7 @@ function formatDate(dateString) {
     
     const day = date.getDate();
     const month = months[date.getMonth()];
-    const year = date.getFullYear().toString().slice(-2);
+    const year = date.getFullYear().toString().slice();
     return `${day} ${month} ${year}`;
 }
 
