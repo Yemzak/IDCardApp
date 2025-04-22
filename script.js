@@ -97,8 +97,9 @@ function generateQRCode(text, callback) {
 function downloadIDCard() {
     const canvas = document.getElementById('idCardCanvas');
     const link = document.createElement('a');
+    const cin = document.getElementById('cin').value || 'ID_Card'; // Use CIN or a default name if CIN is not provided
     link.href = canvas.toDataURL('image/png');
-    link.download = 'id_card.png';
+    link.download = `${cin}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
