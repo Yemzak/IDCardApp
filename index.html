@@ -13,15 +13,25 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script> <!-- JSZip for ZIP -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <!-- FileSaver.js for ZIP Download -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 </head>
 
 <body>
     <h1>ID Card Generator</h1>
 
+    <div id="message" style="color: red; font-weight: bold; text-align: center; margin: 10px 0;"></div>
+
     <div class="container">
         <div class="form-container">
             <h2>Single ID Generation</h2>
             <form id="idForm">
+                <label for="cin">CIN:</label>
+                <input type="text" id="cin" placeholder="Enter CIN" required><br>
+                
+                <button type="button" onclick="searchEnrollee()">Search</button>
+                
+                <hr>
+
                 <label for="name">Name:</label>
                 <input type="text" id="name" placeholder="Enter Name" required><br>
 
@@ -30,9 +40,6 @@
 
                 <label for="bloodGroup">Blood Group:</label>
                 <input type="text" id="bloodGroup" placeholder="Enter Blood Group" required><br>
-
-                <label for="cin">CIN:</label>
-                <input type="text" id="cin" placeholder="Enter CIN" required><br>
 
                 <label for="photo">Upload Photo:</label>
                 <input type="file" id="photo" accept="image/*" required><br>

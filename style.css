@@ -1,23 +1,87 @@
 body {
     font-family: Arial, sans-serif;
+    background-color: #f4f4f9;
+        margin: 0;
+        padding: 0;
+        color: #333;
+    }
+    
+    h1 {
     text-align: center;
+    color: #4CAF50;
+        margin-top: 20px;
 }
 
 .container {
     display: flex;
     justify-content: space-around;
-    margin-top: 20px;
+    flex-wrap: wrap;
+        margin: 20px;
 }
 
 .form-container {
-    width: 45%;
+    background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     padding: 20px;
+    margin: 10px;
+        width: 400px;
+    }
+    
+    .form-container h2 {
+        text-align: center;
+        color: #333;
+        margin-bottom: 20px;
+    }
+    
+    label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: bold;
+    }
+    
+    input[type="text"],
+    input[type="date"],
+    input[type="file"] {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 15px;
     border: 1px solid #ccc;
-    border-radius: 10px;
-    background-color: #f9f9f9;
+    border-radius: 4px;
+        box-sizing: border-box;
+    }
+    
+    button {
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 16px;
+        margin: 5px 2px;
+        cursor: pointer;
+        border-radius: 4px;
+        transition: background-color 0.3s;
+    }
+    
+    button:hover {
+        background-color: #45a049;
 }
 
 canvas {
-    margin-top: 20px;
-    border: 2px solid #000;
+    display: block;
+        margin: 20px auto;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        background: #fff;
+    }
+    
+    #message {
+        text-align: center;
+        margin: 10px 0;
+        font-size: 16px;
+        font-weight: bold;
 }
