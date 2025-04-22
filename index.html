@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ID Card Generator</title>
+    <title>EDHIC IDCARD PORTAL</title>
     <link rel="stylesheet" href="style.css">
 
     <!-- Required Libraries -->
@@ -17,7 +17,11 @@
 </head>
 
 <body>
-    <h1>ID Card Generator</h1>
+    <header style="text-align: center; margin-top: 20px;">
+        <img src="logo.png" alt="EDHIC Logo" style="width: 150px; height: auto;">
+    </header>
+    
+    <h1>EDHIC IDCARD PORTAL</h1>
 
     <div id="message" style="color: red; font-weight: bold; text-align: center; margin: 10px 0;"></div>
 
@@ -50,16 +54,8 @@
             </form>
         </div>
 
-        <div class="form-container">
-            <h2>Bulk ID Generation</h2>
-            <input type="file" id="bulkFile" accept=".xlsx, .xls">
-            <button type="button" onclick="generateBulkIDCards()">Generate Bulk</button>
-            <button type="button" id="downloadBulkBtn" style="display:none;" onclick="downloadBulkIDCards()">Download
-                All</button>
-        </div>
+        <canvas id="idCardCanvas" width="600" height="400"></canvas>
     </div>
-
-    <canvas id="idCardCanvas" width="600" height="400"></canvas>
 
     <script src="script.js"></script>
 </body>

@@ -1,7 +1,7 @@
 body {
     font-family: Arial, sans-serif;
     background-color: #f4f4f9;
-        margin: 0;
+    margin: 0;
         padding: 0;
         color: #333;
     }
@@ -9,23 +9,23 @@ body {
     h1 {
     text-align: center;
     color: #4CAF50;
-        margin-top: 20px;
+    margin-top: 20px;
 }
 
 .container {
     display: flex;
-    justify-content: space-around;
-    flex-wrap: wrap;
+    justify-content: space-between;
+        align-items: flex-start;
         margin: 20px;
 }
 
 .form-container {
     background: #fff;
-        border: 1px solid #ddd;
+    border: 1px solid #ddd;
         border-radius: 8px;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     padding: 20px;
-    margin: 10px;
+    margin-right: 20px;
         width: 400px;
     }
     
@@ -49,7 +49,7 @@ body {
         margin-bottom: 15px;
     border: 1px solid #ccc;
     border-radius: 4px;
-        box-sizing: border-box;
+    box-sizing: border-box;
     }
     
     button {
@@ -72,16 +72,9 @@ body {
 }
 
 canvas {
-    display: block;
-        margin: 20px auto;
-        border: 1px solid #ddd;
+    border: 1px solid #ddd;
         border-radius: 8px;
         background: #fff;
-    }
-    
-    #message {
-        text-align: center;
-        margin: 10px 0;
-        font-size: 16px;
-        font-weight: bold;
+    width: 600px;
+        height: 400px;
 }

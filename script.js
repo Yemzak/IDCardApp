@@ -245,7 +245,7 @@ async function searchEnrollee() {
 
         document.getElementById('name').value = fullName;
         document.getElementById('dob').value = enrollee.dob || enrollee.date_of_birth || '';
-        document.getElementById('bloodGroup').value = enrollee.blood_group || '';
+        document.getElementById('bloodGroup').value = enrollee.blood_group || '-'; // Set to '-' if no blood group is provided
         document.getElementById('cin').value = enrollee.cin;
 
         displayMessage('Enrollee details populated successfully.', false);
