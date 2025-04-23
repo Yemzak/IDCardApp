@@ -33,8 +33,10 @@ function drawIDCard(name, dob, bloodGroup, cin, photoUrl, callback) {
     const ctx = canvas.getContext('2d');
     const template = new Image();
 
-    // Use Template2.jpg for EQP or S-EQP CINs, otherwise use template.jpg
-    if (cin.includes('EQP') || cin.includes('S-EQP')) {
+    // Use Template3.png for S-EQP, Template2.jpg for EQP, otherwise use template.jpg
+    if (cin.includes('S-EQP')) {
+        template.src = 'Template3.png';
+    } else if (cin.includes('EQP')) {
         template.src = 'Template2.jpg';
     } else {
         template.src = 'template.jpg';
@@ -60,7 +62,9 @@ function drawIDCard(name, dob, bloodGroup, cin, photoUrl, callback) {
 
             generateQRCode(cin, function(qrImage) {
                 // Position QR code based on CIN type
-                if (cin.includes('EQP') || cin.includes('S-EQP')) {
+                if (cin.includes('S-EQP')) {
+                    ctx.drawImage(qrImage, 30, canvas.height - 130, 100, 100); // Bottom left corner
+                } else if (cin.includes('EQP')) {
                     ctx.drawImage(qrImage, 30, canvas.height - 130, 100, 100); // Bottom left corner
                 } else {
                     ctx.drawImage(qrImage, 460, 290, 100, 100); // Default position
