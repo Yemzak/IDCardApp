@@ -111,9 +111,19 @@ function generateQRCode(text, callback) {
 
 function downloadIDCard() {
     const canvas = document.getElementById('idCardCanvas');
+    const cin = document.getElementById('cin').value || 'ID_Card';
+
+    // Create a high-resolution canvas
+    const scale = 3; // 3x resolution
+    const highResCanvas = document.createElement('canvas');
+    highResCanvas.width = canvas.width * scale;
+    highResCanvas.height = canvas.height * scale;
+    const ctx = highResCanvas.getContext('2d');
+    ctx.scale(scale, scale);
+    ctx.drawImage(canvas, 0, 0);
+
     const link = document.createElement('a');
-    const cin = document.getElementById('cin').value || 'ID_Card'; // Use CIN or a default name if CIN is not provided
-    link.href = canvas.toDataURL('image/png');
+    link.href = highResCanvas.toDataURL('image/png');
     link.download = `${cin}.png`;
     document.body.appendChild(link);
     link.click();
