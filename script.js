@@ -1,7 +1,7 @@
 // Removed import statement for Supabase as we are using the global object from the CDN
 
-const supabaseUrl = 'https://fkiqluuhngmvfwnuferx.supabase.co'; // Replace this with your actual Supabase project URL
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZraXFsdXVobmdtdmZ3bnVmZXJ4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NDEyNDM1MiwiZXhwIjoyMDU5NzAwMzUyfQ.szsCbKtpURnqkk5y9LHferyLVZEz4b-eOKAg62qzfmQ'; // Replace this with your actual Supabase anon key
+const supabaseUrl = 'https://peqgqiyfpzypkjbchlco.supabase.co'; // Replace this with your actual Supabase project URL
+const supabaseKey = '   eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBlcWdxaXlmcHp5cGtqYmNobGNvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0MzkzMzkwMywiZXhwIjoyMDU5NTA5OTAzfQ.3UcoSGUXlDrMum3BnqYaN9Ud9HdNXos4NbfCiyiUAlk'; // Replace this with your actual Supabase anon key
 const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
 function generateIDCard() {
@@ -113,21 +113,35 @@ function downloadIDCard() {
     const canvas = document.getElementById('idCardCanvas');
     const cin = document.getElementById('cin').value || 'ID_Card';
 
-    // Create a high-resolution canvas
-    const scale = 3; // 3x resolution
-    const highResCanvas = document.createElement('canvas');
-    highResCanvas.width = canvas.width * scale;
-    highResCanvas.height = canvas.height * scale;
-    const ctx = highResCanvas.getContext('2d');
-    ctx.scale(scale, scale);
-    ctx.drawImage(canvas, 0, 0);
+    // Use the template's natural size for high-res download
+    let template = new Image();
+    if (cin.includes('S-EQP')) {
+        template.src = 'Template3.png';
+    } else if (cin.includes('EQP')) {
+        template.src = 'Template2.jpg';
+    } else {
+        template.src = 'template.jpg';
+    }
 
-    const link = document.createElement('a');
-    link.href = highResCanvas.toDataURL('image/png');
-    link.download = `${cin}.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    template.onload = function () {
+        // Create a canvas matching the template's natural size
+        const highResCanvas = document.createElement('canvas');
+        highResCanvas.width = template.naturalWidth;
+        highResCanvas.height = template.naturalHeight;
+        const ctx = highResCanvas.getContext('2d');
+
+        // Scale factors for drawing from the on-screen canvas to the template size
+        const scaleX = template.naturalWidth / canvas.width;
+        const scaleY = template.naturalHeight / canvas.height;
+        ctx.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, highResCanvas.width, highResCanvas.height);
+
+        const link = document.createElement('a');
+        link.href = highResCanvas.toDataURL('image/png');
+        link.download = `${cin}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
 }
 
 function printIDCard() {
@@ -218,7 +232,7 @@ function displayMessage(message, isError = true) {
 }
 
 async function searchEnrollee() {
-    const cin = document.getElementById('cin').value;
+    const cin = document.getElementById('cin').value.trim(); // Trim whitespace
 
     if (!cin) {
         displayMessage('Please enter CIN to search.', true);
@@ -226,33 +240,23 @@ async function searchEnrollee() {
     }
 
     try {
-        const tables = ['formal_data', 'informal_data', 'state_equity_enrollment'];
-        let enrollee = null;
+        let { data, error } = await supabase
+            .from('card_enrollees')
+            .select('*')
+            .eq('cin', cin);
 
-        for (const table of tables) {
-            const { data, error } = await supabase
-                .from(table)
-                .select('*')
-                .eq('cin', cin);
-
-            if (error) {
-                displayMessage(`Error fetching enrollee details from ${table}.`, true);
-                console.error(error);
-                continue;
-            }
-
-            if (data && data.length > 0) {
-                console.log(`Data fetched from ${table}:`, data); // Log data for debugging
-                enrollee = data[0];
-                break;
-            }
+        if (error) {
+            displayMessage('Error fetching enrollee details from card_enrollees.', true);
+            console.error(error);
+            return;
         }
 
-        if (!enrollee) {
+        if (!data || data.length === 0) {
             displayMessage('No enrollee found with the provided CIN.', true);
             return;
         }
 
+        const enrollee = data[0];
         // Log individual name components for debugging
         console.log('Surname:', enrollee.surname);
         console.log('First Name:', enrollee.first_name);
@@ -262,18 +266,24 @@ async function searchEnrollee() {
         const surname = enrollee.surname || '';
         const firstname = enrollee.first_name || '';
         let middleName = enrollee.middle_name || '';
-
         if (middleName.length > 1) {
             middleName = `${middleName.charAt(0)}.`; // Abbreviate middle name if long
         }
-
         const fullName = `${surname} ${middleName} ${firstname}`.trim();
-
         document.getElementById('name').value = fullName;
         document.getElementById('dob').value = enrollee.dob || enrollee.date_of_birth || '';
-        document.getElementById('bloodGroup').value = enrollee.blood_group || '-'; // Set to '-' if no blood group is provided
+        document.getElementById('bloodGroup').value = enrollee.blood_group || '-';
         document.getElementById('cin').value = enrollee.cin;
-
+        if (enrollee.photo_url) {
+            var photoPreview = document.getElementById('photoPreview');
+            if (photoPreview) {
+                photoPreview.src = enrollee.photo_url;
+            }
+            var photoUrlInput = document.getElementById('photoUrl');
+            if (photoUrlInput) {
+                photoUrlInput.value = enrollee.photo_url;
+            }
+        }
         displayMessage('Enrollee details populated successfully.', false);
     } catch (err) {
         displayMessage('An unexpected error occurred. Please try again.', true);
