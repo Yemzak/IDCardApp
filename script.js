@@ -322,21 +322,25 @@ async function searchEnrollee() {
         }
 
         // Log individual name components for debugging
-        console.log('Surname:', enrollee.surname);
-        console.log('First Name:', enrollee.first_name);
-        console.log('Middle Name:', enrollee.middle_name);
+        let surname = enrollee.surname || '';
+        let firstname = enrollee.first_name || '';
+        let middleName = enrollee.middle_name || '';
+        // Fallbacks for new_enrollees table field names
+        if (!surname && enrollee.lastname) surname = enrollee.lastname;
+        if (!firstname && enrollee.firstname) firstname = enrollee.firstname;
+        if (!middleName && enrollee.middlename) middleName = enrollee.middlename;
+        console.log('Surname:', surname);
+        console.log('First Name:', firstname);
+        console.log('Middle Name:', middleName);
 
         // Format full name as 'Surname (Middle Initial if long) Firstname'
-        const surname = enrollee.surname || '';
-        const firstname = enrollee.first_name || '';
-        let middleName = enrollee.middle_name || '';
         if (middleName.length > 1) {
             middleName = `${middleName.charAt(0)}.`; // Abbreviate middle name if long
         }
         const fullName = `${surname} ${middleName} ${firstname}`.trim();
         document.getElementById('name').value = fullName;
-        document.getElementById('dob').value = enrollee.dob || enrollee.date_of_birth || '';
-        document.getElementById('bloodGroup').value = enrollee.blood_group || '-';
+        document.getElementById('dob').value = enrollee.dob || enrollee.date_of_birth || enrollee.dobirth || '';
+        document.getElementById('bloodGroup').value = enrollee.blood_group || enrollee.bloodgroup || '-';
         document.getElementById('cin').value = enrollee.cin;
         // First photo
         if (enrollee.photo_url) {
