@@ -1,7 +1,7 @@
 // Removed import statement for Supabase as we are using the global object from the CDN
 
 const supabaseUrl = 'https://peqgqiyfpzypkjbchlco.supabase.co'; // Replace this with your actual Supabase project URL
-const supabaseKey = '   eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBlcWdxaXlmcHp5cGtqYmNobGNvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0MzkzMzkwMywiZXhwIjoyMDU5NTA5OTAzfQ.3UcoSGUXlDrMum3BnqYaN9Ud9HdNXos4NbfCiyiUAlk'; // Replace this with your actual Supabase anon key
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBlcWdxaXlmcHp5cGtqYmNobGNvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0MzkzMzkwMywiZXhwIjoyMDU5NTA5OTAzfQ.3UcoSGUXlDrMum3BnqYaN9Ud9HdNXos4NbfCiyiUAlk'; // Replace this with your actual Supabase anon key
 const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
 function generateIDCard() {
@@ -10,25 +10,57 @@ function generateIDCard() {
     const bloodGroup = document.getElementById('bloodGroup').value;
     const cin = document.getElementById('cin').value;
     const photo = document.getElementById('photo').files[0];
+    const photoUrlInput = document.getElementById('photoUrl');
+    const photoUrlValue = photoUrlInput ? photoUrlInput.value : '';
+    // Second photo
+    const photo2 = document.getElementById('photo2') ? document.getElementById('photo2').files[0] : null;
+    const photoUrl2Input = document.getElementById('photoUrl2');
+    const photoUrl2Value = photoUrl2Input ? photoUrl2Input.value : '';
 
-    if (!name || !dob || !bloodGroup || !cin || !photo) {
+    if (!name || !dob || !bloodGroup || !cin || (!photo && !photoUrlValue)) {
         displayMessage('All fields are required to generate an ID card.', true);
         return;
     }
 
-    const reader = new FileReader();
-    reader.onload = function (e) {
-        drawIDCard(name, dob, bloodGroup, cin, e.target.result, function () {
-            displayMessage('ID card generated successfully.', false);
+    // Helper to get data URL for photo2 if file, else use URL
+    function getPhoto2(callback) {
+        if (photo2) {
+            const reader2 = new FileReader();
+            reader2.onload = function (e2) {
+                callback(e2.target.result);
+            };
+            reader2.onerror = function () {
+                callback(photoUrl2Value || '');
+            };
+            reader2.readAsDataURL(photo2);
+        } else {
+            callback(photoUrl2Value || '');
+        }
+    }
+
+    if (photo) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            getPhoto2(function(photo2Url) {
+                drawIDCard(name, dob, bloodGroup, cin, e.target.result, function () {
+                    displayMessage('ID card generated successfully.', false);
+                }, photo2Url);
+            });
+        };
+        reader.onerror = function () {
+            displayMessage('Failed to read the photo file.', true);
+        };
+        reader.readAsDataURL(photo);
+    } else if (photoUrlValue) {
+        getPhoto2(function(photo2Url) {
+            drawIDCard(name, dob, bloodGroup, cin, photoUrlValue, function () {
+                displayMessage('ID card generated successfully.', false);
+            }, photo2Url);
         });
-    };
-    reader.onerror = function () {
-        displayMessage('Failed to read the photo file.', true);
-    };
-    reader.readAsDataURL(photo);
+    }
 }
 
-function drawIDCard(name, dob, bloodGroup, cin, photoUrl, callback) {
+function drawIDCard(name, dob, bloodGroup, cin, photoUrl, callback, photo2Url) {
     const canvas = document.getElementById('idCardCanvas');
     const ctx = canvas.getContext('2d');
     const template = new Image();
@@ -45,33 +77,46 @@ function drawIDCard(name, dob, bloodGroup, cin, photoUrl, callback) {
     template.onload = function () {
         ctx.drawImage(template, 0, 0, canvas.width, canvas.height);
 
-        const photoImg = new Image();
-        photoImg.crossOrigin = "anonymous";
-        photoImg.src = photoUrl;
+        // Helper to load an image and call cb(img) or cb(null) on error
+        function loadImage(src, cb) {
+            if (!src) { cb(null); return; }
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            img.onload = function () { cb(img); };
+            img.onerror = function () { cb(null); };
+            img.src = src;
+        }
 
-        photoImg.onload = function () {
-            ctx.drawImage(photoImg, 30, 70, 170, 190); // Position the photo
-
-            ctx.font = 'bold 24px "Agency FB"'; // Custom font
+        // Load both photos in parallel, then draw
+        let loaded1 = false, loaded2 = false;
+        let img1 = null, img2 = null;
+        function checkAndDraw() {
+            if (!loaded1) return;
+            if (!loaded2) return;
+            // Draw first photo if available
+            if (img1) ctx.drawImage(img1, 30, 70, 170, 190);
+            // Draw second photo if available
+            if (img2) ctx.drawImage(img2, 420, 70, 170, 190);
+            // Draw text and QR
+            ctx.font = 'bold 24px "Agency FB"';
             ctx.fillStyle = '#000';
-
             ctx.fillText(`${name.toUpperCase()}`, 290, 120);
             ctx.fillText(formatDate(dob), 370, 170);
             ctx.fillText(`${bloodGroup}`, 360, 210);
             ctx.fillText(`${cin}`, 270, 255);
-
             generateQRCode(cin, function(qrImage) {
-                // Position QR code based on CIN type
                 if (cin.includes('S-EQP')) {
-                    ctx.drawImage(qrImage, 30, canvas.height - 130, 100, 100); // Bottom left corner
+                    ctx.drawImage(qrImage, 30, canvas.height - 130, 100, 100);
                 } else if (cin.includes('EQP')) {
-                    ctx.drawImage(qrImage, 30, canvas.height - 130, 100, 100); // Bottom left corner
+                    ctx.drawImage(qrImage, 30, canvas.height - 130, 100, 100);
                 } else {
-                    ctx.drawImage(qrImage, 460, 290, 100, 100); // Default position
+                    ctx.drawImage(qrImage, 460, 290, 100, 100);
                 }
                 if (callback) callback(canvas);
             });
-        };
+        }
+        loadImage(photoUrl, function(img) { img1 = img; loaded1 = true; checkAndDraw(); });
+        loadImage(photo2Url, function(img) { img2 = img; loaded2 = true; checkAndDraw(); });
     };
 }
 
@@ -240,23 +285,42 @@ async function searchEnrollee() {
     }
 
     try {
+        // Try card_enrollees first
         let { data, error } = await supabase
             .from('card_enrollees')
             .select('*')
             .eq('cin', cin);
 
+        let enrollee = null;
+        let foundTable = '';
         if (error) {
             displayMessage('Error fetching enrollee details from card_enrollees.', true);
             console.error(error);
             return;
         }
-
-        if (!data || data.length === 0) {
-            displayMessage('No enrollee found with the provided CIN.', true);
-            return;
+        if (data && data.length > 0) {
+            enrollee = data[0];
+            foundTable = 'card_enrollees';
+        } else {
+            // Try new_enrollees if not found
+            let { data: data2, error: error2 } = await supabase
+                .from('new_enrollees')
+                .select('*')
+                .eq('cin', cin);
+            if (error2) {
+                displayMessage('Error fetching enrollee details from new_enrollees.', true);
+                console.error(error2);
+                return;
+            }
+            if (data2 && data2.length > 0) {
+                enrollee = data2[0];
+                foundTable = 'new_enrollees';
+            } else {
+                displayMessage('No enrollee found with the provided CIN.', true);
+                return;
+            }
         }
 
-        const enrollee = data[0];
         // Log individual name components for debugging
         console.log('Surname:', enrollee.surname);
         console.log('First Name:', enrollee.first_name);
@@ -274,17 +338,35 @@ async function searchEnrollee() {
         document.getElementById('dob').value = enrollee.dob || enrollee.date_of_birth || '';
         document.getElementById('bloodGroup').value = enrollee.blood_group || '-';
         document.getElementById('cin').value = enrollee.cin;
+        // First photo
         if (enrollee.photo_url) {
             var photoPreview = document.getElementById('photoPreview');
+            var photoUrlInput = document.getElementById('photoUrl');
             if (photoPreview) {
                 photoPreview.src = enrollee.photo_url;
+                if (/photos\.app\.goo\.gl/.test(enrollee.photo_url)) {
+                    displayMessage('Google Photos sharing links will NOT display. Please provide a direct image link (should start with https://lh3.googleusercontent.com/).', true);
+                }
             }
-            var photoUrlInput = document.getElementById('photoUrl');
             if (photoUrlInput) {
                 photoUrlInput.value = enrollee.photo_url;
             }
         }
-        displayMessage('Enrollee details populated successfully.', false);
+        // Second photo
+        if (enrollee.photo_url2) {
+            var photoPreview2 = document.getElementById('photoPreview2');
+            var photoUrl2Input = document.getElementById('photoUrl2');
+            if (photoPreview2) {
+                photoPreview2.src = enrollee.photo_url2;
+                if (/photos\.app\.goo\.gl/.test(enrollee.photo_url2)) {
+                    displayMessage('Google Photos sharing links will NOT display for second photo. Please provide a direct image link.', true);
+                }
+            }
+            if (photoUrl2Input) {
+                photoUrl2Input.value = enrollee.photo_url2;
+            }
+        }
+        displayMessage('Enrollee details populated successfully from ' + foundTable + '.', false);
     } catch (err) {
         displayMessage('An unexpected error occurred. Please try again.', true);
         console.error(err);
