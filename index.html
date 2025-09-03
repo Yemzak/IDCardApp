@@ -49,13 +49,7 @@
 
                 <input type="file" id="photo" accept="image/*" required><br>
                 <img id="photoPreview" style="max-width:100px;max-height:100px;display:block;margin-bottom:10px;">
-                <input type="text" id="photoUrl" placeholder="Photo URL"><br>
                 
-                <label for="photo2">Second Photo:</label>
-                <input type="file" id="photo2" accept="image/*"><br>
-                <img id="photoPreview2" style="max-width:100px;max-height:100px;display:block;margin-bottom:10px;">
-                <input type="text" id="photoUrl2" placeholder="Second Photo URL"><br>
-
                 <button type="button" onclick="generateIDCard()">Generate ID Card</button>
                 <button type="button" onclick="downloadIDCard()">Download</button>
                 <button type="button" onclick="printIDCard()">Print</button>
@@ -65,43 +59,49 @@
         <canvas id="idCardCanvas" width="600" height="400"></canvas>
     </div>
 
+    <!-- ================= Dependent ID Card Printing Section ================= -->
+    <div class="container" style="margin-top:40px;">
+        <div class="form-container">
+            <h2>Dependent ID Card Printing</h2>
+            <label for="principalSearch">Principal CIN or Phone:</label>
+            <input type="text" id="principalSearch" placeholder="Enter Principal CIN or Phone">
+            <button type="button" onclick="searchDependents()">Search Dependents</button>
+            <div id="dependentsSection" style="display:none; margin-top:20px;">
+                <div id="dependentsGrid"
+                    style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;"></div>
+                <button id="printAllDependentsBtn" type="button" style="display:none;margin-top:18px;"
+                    onclick="printAllDependents()">Download All Dependents</button>
+                <canvas id="dependentIdCardCanvas" width="600" height="400" style="display:none;"></canvas>
+            </div>
+        </div>
+    </div>
+    <div id="toast"></div>
     <script src="script.js"></script>
     <script>
-        // Live preview for first photo
-        document.getElementById('photo').addEventListener('change', function (e) {
-            const file = e.target.files[0];
-            const preview = document.getElementById('photoPreview');
-            if (file && preview) {
-                const reader = new FileReader();
-                reader.onload = function (evt) {
-                    preview.src = evt.target.result;
-                };
-                reader.readAsDataURL(file);
+    // Toast/alert logic for professional error/info display
+    function showToast(message, isError = true) {
+        var toast = document.getElementById('toast');
+        if (!toast) return;
+        toast.className = 'show' + (isError ? '' : ' success');
+        toast.textContent = message;
+        setTimeout(function(){ toast.className = toast.className.replace('show', ''); }, 4000);
+    }
+    // Patch displayMessage to use toast
+    if (typeof displayMessage === 'function') {
+        window.displayMessage = function(message, isError = true) {
+            var messageDiv = document.getElementById('message');
+            if (messageDiv) {
+                messageDiv.style.color = isError ? '#d32f2f' : '#43a047';
+                messageDiv.textContent = message;
+                setTimeout(() => { messageDiv.textContent = ''; }, 5000);
             }
-        });
-        document.getElementById('photoUrl').addEventListener('input', function (e) {
-            const url = e.target.value;
-            const preview = document.getElementById('photoPreview');
-            if (preview) preview.src = url;
-        });
-        // Live preview for second photo
-        document.getElementById('photo2').addEventListener('change', function (e) {
-            const file = e.target.files[0];
-            const preview = document.getElementById('photoPreview2');
-            if (file && preview) {
-                const reader = new FileReader();
-                reader.onload = function (evt) {
-                    preview.src = evt.target.result;
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-        document.getElementById('photoUrl2').addEventListener('input', function (e) {
-            const url = e.target.value;
-            const preview = document.getElementById('photoPreview2');
-            if (preview) preview.src = url;
-        });
+            showToast(message, isError);
+        }
+    } else {
+        window.displayMessage = showToast;
+    }
     </script>
+    <!-- Live preview for photos handled in script.js for maintainability -->
 </body>
 
 </html>

@@ -13,38 +13,20 @@ function generateIDCard() {
     const photoUrlInput = document.getElementById('photoUrl');
     const photoUrlValue = photoUrlInput ? photoUrlInput.value : '';
     // Second photo
-    const photo2 = document.getElementById('photo2') ? document.getElementById('photo2').files[0] : null;
-    const photoUrl2Input = document.getElementById('photoUrl2');
-    const photoUrl2Value = photoUrl2Input ? photoUrl2Input.value : '';
+    // Removed second photo and URL logic
 
     if (!name || !dob || !bloodGroup || !cin || (!photo && !photoUrlValue)) {
         displayMessage('All fields are required to generate an ID card.', true);
         return;
     }
 
-    // Helper to get data URL for photo2 if file, else use URL
-    function getPhoto2(callback) {
-        if (photo2) {
-            const reader2 = new FileReader();
-            reader2.onload = function (e2) {
-                callback(e2.target.result);
-            };
-            reader2.onerror = function () {
-                callback(photoUrl2Value || '');
-            };
-            reader2.readAsDataURL(photo2);
-        } else {
-            callback(photoUrl2Value || '');
-        }
-    }
+    // No second photo logic needed
 
     if (photo) {
         const reader = new FileReader();
         reader.onload = function (e) {
-            getPhoto2(function(photo2Url) {
-                drawIDCard(name, dob, bloodGroup, cin, e.target.result, function () {
-                    displayMessage('ID card generated successfully.', false);
-                }, photo2Url);
+            drawIDCard(name, dob, bloodGroup, cin, e.target.result, function () {
+                displayMessage('ID card generated successfully.', false);
             });
         };
         reader.onerror = function () {
@@ -52,15 +34,13 @@ function generateIDCard() {
         };
         reader.readAsDataURL(photo);
     } else if (photoUrlValue) {
-        getPhoto2(function(photo2Url) {
-            drawIDCard(name, dob, bloodGroup, cin, photoUrlValue, function () {
-                displayMessage('ID card generated successfully.', false);
-            }, photo2Url);
+        drawIDCard(name, dob, bloodGroup, cin, photoUrlValue, function () {
+            displayMessage('ID card generated successfully.', false);
         });
     }
 }
 
-function drawIDCard(name, dob, bloodGroup, cin, photoUrl, callback, photo2Url) {
+function drawIDCard(name, dob, bloodGroup, cin, photoUrl, callback) {
     const canvas = document.getElementById('idCardCanvas');
     const ctx = canvas.getContext('2d');
     const template = new Image();
@@ -87,36 +67,27 @@ function drawIDCard(name, dob, bloodGroup, cin, photoUrl, callback, photo2Url) {
             img.src = src;
         }
 
-        // Load both photos in parallel, then draw
-        let loaded1 = false, loaded2 = false;
-        let img1 = null, img2 = null;
-        function checkAndDraw() {
-            if (!loaded1) return;
-            if (!loaded2) return;
-            // Draw first photo if available
-            if (img1) ctx.drawImage(img1, 30, 70, 170, 190);
-            // Draw second photo if available
-            if (img2) ctx.drawImage(img2, 420, 70, 170, 190);
-            // Draw text and QR
-            ctx.font = 'bold 24px "Agency FB"';
-            ctx.fillStyle = '#000';
-            ctx.fillText(`${name.toUpperCase()}`, 290, 120);
-            ctx.fillText(formatDate(dob), 370, 170);
-            ctx.fillText(`${bloodGroup}`, 360, 210);
-            ctx.fillText(`${cin}`, 270, 255);
-            generateQRCode(cin, function(qrImage) {
-                if (cin.includes('S-EQP')) {
-                    ctx.drawImage(qrImage, 30, canvas.height - 130, 100, 100);
-                } else if (cin.includes('EQP')) {
-                    ctx.drawImage(qrImage, 30, canvas.height - 130, 100, 100);
-                } else {
-                    ctx.drawImage(qrImage, 460, 290, 100, 100);
-                }
-                if (callback) callback(canvas);
-            });
-        }
-        loadImage(photoUrl, function(img) { img1 = img; loaded1 = true; checkAndDraw(); });
-        loadImage(photo2Url, function(img) { img2 = img; loaded2 = true; checkAndDraw(); });
+    // Load photo and then draw
+    loadImage(photoUrl, function(img) {
+        if (img) ctx.drawImage(img, 30, 70, 170, 190);
+        // Draw text and QR
+        ctx.font = 'bold 24px "Agency FB"';
+        ctx.fillStyle = '#000';
+        ctx.fillText(`${name.toUpperCase()}`, 290, 120);
+        ctx.fillText(formatDate(dob), 370, 170);
+        ctx.fillText(`${bloodGroup}`, 360, 210);
+        ctx.fillText(`${cin}`, 270, 255);
+        generateQRCode(cin, function(qrImage) {
+            if (cin.includes('S-EQP')) {
+                ctx.drawImage(qrImage, 30, canvas.height - 130, 100, 100);
+            } else if (cin.includes('EQP')) {
+                ctx.drawImage(qrImage, 30, canvas.height - 130, 100, 100);
+            } else {
+                ctx.drawImage(qrImage, 460, 290, 100, 100);
+            }
+            if (callback) callback(canvas);
+        });
+    });
     };
 }
 
@@ -356,23 +327,358 @@ async function searchEnrollee() {
                 photoUrlInput.value = enrollee.photo_url;
             }
         }
-        // Second photo
-        if (enrollee.photo_url2) {
-            var photoPreview2 = document.getElementById('photoPreview2');
-            var photoUrl2Input = document.getElementById('photoUrl2');
-            if (photoPreview2) {
-                photoPreview2.src = enrollee.photo_url2;
-                if (/photos\.app\.goo\.gl/.test(enrollee.photo_url2)) {
-                    displayMessage('Google Photos sharing links will NOT display for second photo. Please provide a direct image link.', true);
-                }
-            }
-            if (photoUrl2Input) {
-                photoUrl2Input.value = enrollee.photo_url2;
-            }
-        }
+        // Removed second photo logic
         displayMessage('Enrollee details populated successfully from ' + foundTable + '.', false);
     } catch (err) {
         displayMessage('An unexpected error occurred. Please try again.', true);
         console.error(err);
     }
 }
+
+// ================= Dependent ID Card Printing Logic =================
+
+async function searchDependents() {
+    const principalInputElem = document.getElementById('principalSearch');
+    if (!principalInputElem) {
+        alert('principalSearch input not found in HTML.');
+        return;
+    }
+    const principalInput = principalInputElem.value.trim();
+    if (!principalInput) {
+        alert('Please enter Principal CIN or Phone.');
+        showDependentsMessage('Please enter Principal CIN or Phone.', true);
+        return;
+    }
+
+    let principalDataList = [];
+    let principalCINs = [];
+    let foundPrincipal = false;
+    let data, error;
+    // Try card_enrollees by cin (no phone column)
+    try {
+        ({ data, error } = await supabase
+            .from('card_enrollees_new')
+            .select('*')
+            .eq('cin', principalInput));
+    } catch (e) {
+        alert('Supabase connection or query failed.');
+        showDependentsMessage('Supabase connection or query failed.', true);
+        return;
+    }
+    if (!error && data && data.length > 0) {
+        principalDataList = data;
+        principalCINs = data.map(d => d.cin);
+        foundPrincipal = true;
+    }
+    // Try new_enrollees by cin or phone or phone_number
+    if (!foundPrincipal || principalCINs.length === 0) {
+        let data2, error2;
+        try {
+            ({ data: data2, error: error2 } = await supabase
+                .from('new_enrollees')
+                .select('*')
+                .or(`cin.eq.${principalInput},phone.eq.${principalInput},phone_number.eq.${principalInput}`));
+        } catch (e) {
+            alert('Supabase connection or query failed (new_enrollees).');
+            showDependentsMessage('Supabase connection or query failed (new_enrollees).', true);
+            return;
+        }
+        if (!error2 && data2 && data2.length > 0) {
+            principalDataList = principalDataList.concat(data2);
+            principalCINs = principalCINs.concat(data2.map(d => d.cin));
+            foundPrincipal = true;
+        }
+    }
+    // Try dependants2 by Enrollee ID or phone
+    if (!foundPrincipal || principalCINs.length === 0) {
+        let data3, error3;
+        try {
+            ({ data: data3, error: error3 } = await supabase
+                .from('dependants2')
+                .select('*')
+                .or(`Enrollee ID.eq.${principalInput},Phone Number.eq.${principalInput}`));
+        } catch (e) {
+            alert('Supabase connection or query failed (dependants2 principal).');
+            showDependentsMessage('Supabase connection or query failed (dependants2 principal).', true);
+            return;
+        }
+        if (!error3 && data3 && data3.length > 0) {
+            principalDataList = principalDataList.concat(data3);
+            principalCINs = principalCINs.concat(data3.map(d => d["Enrollee ID"]));
+            foundPrincipal = true;
+        }
+    }
+    if (!foundPrincipal || principalCINs.length === 0) {
+        alert('Principal not found.');
+        showDependentsMessage('Principal not found.', true);
+        return;
+    }
+
+    // Remove duplicates for principalCINs and principalDataList
+    principalCINs = [...new Set(principalCINs.filter(Boolean))];
+    principalDataList = principalDataList.filter((v,i,a) => v && principalCINs.includes(v.cin || v["Enrollee ID"]) && a.findIndex(t => (t.cin||t["Enrollee ID"]) === (v.cin||v["Enrollee ID"])) === i);
+
+    // Show all principal names found (no duplicates)
+    const dependentsSection = document.getElementById('dependentsSection');
+    const dependentsGrid = document.getElementById('dependentsGrid');
+    const printAllBtn = document.getElementById('printAllDependentsBtn');
+    if (!dependentsSection || !dependentsGrid || !printAllBtn) {
+        alert('Dependent section elements not found in HTML.');
+        return;
+    }
+    dependentsGrid.innerHTML = '';
+    // Remove duplicate names for display
+    const principalNames = principalDataList.map(p => (p.surname || p.lastname || p["Last Name"] || '') + ' ' + (p.first_name || p.firstname || p["First Name"] || '')).filter((v,i,a) => v && a.indexOf(v) === i);
+    dependentsGrid.innerHTML += `<div style="grid-column:1/-1;padding:10px 0 18px 0;font-weight:bold;font-size:1.1rem;color:#1a237e;">Principals Found:<br>${principalNames.join('<br>')}</div>`;
+
+    // For each principalCIN, search dependents
+    let allDependents = [];
+    for (const principalCIN of principalCINs) {
+        let dependents, depError;
+        try {
+            ({ data: dependents, error: depError } = await supabase
+                .from('dependants2')
+                .select('*')
+                .ilike('Enrollee ID', `${principalCIN}/%`));
+        } catch (e) {
+            alert('Supabase connection or query failed (dependants2).');
+            showDependentsMessage('Supabase connection or query failed (dependants2).', true);
+            return;
+        }
+        if (depError) {
+            alert('Error searching dependents: ' + depError.message);
+            showDependentsMessage('Error searching dependents.', true);
+            return;
+        }
+        if (dependents && dependents.length > 0) {
+            allDependents = allDependents.concat(dependents);
+        }
+    }
+    // Remove duplicate dependents by Enrollee ID
+    allDependents = allDependents.filter((v,i,a) => v && v["Enrollee ID"] && a.findIndex(t => t["Enrollee ID"] === v["Enrollee ID"]) === i);
+    if (allDependents.length === 0) {
+        dependentsSection.style.display = 'block';
+        printAllBtn.style.display = 'none';
+        showDependentsMessage('No dependents found for this principal/phone.', true);
+        return;
+    }
+    dependentsSection.style.display = 'block';
+    printAllBtn.style.display = 'inline-block';
+
+    if (!window.dependentPhotoFiles) window.dependentPhotoFiles = {};
+    allDependents.forEach((dep, idx) => {
+        let surname = dep["Last Name"] || '';
+        let firstname = dep["First Name"] || '';
+        let middleName = dep["Middle Name"] || '';
+        let gender = dep["Gender"] || '';
+        let dob = dep["Birth Date"] || '';
+        let bloodGroup = dep["Blood Group"] || '';
+        let enrolleeId = dep["Enrollee ID"] || '';
+        if (middleName.length > 1) middleName = `${middleName.charAt(0)}.`;
+        const fullName = `${surname} ${middleName} ${firstname}`.trim();
+        const photoUrl = dep.photo_url || '';
+        const depCard = document.createElement('div');
+        depCard.className = 'dependent-card';
+        depCard.style.border = '1px solid #ccc';
+        depCard.style.padding = '10px';
+        depCard.style.background = '#fafbfc';
+        depCard.innerHTML = `
+            <img id="depPhotoPreview_${enrolleeId}" src="${photoUrl}" alt="Photo" style="max-width:80px;max-height:80px;display:block;margin:auto;">
+            <input type="file" accept="image/*" style="margin-top:5px;" onchange="handleDependentPhotoChange('${enrolleeId}', this)">
+            <div style="font-weight:bold;margin-top:5px;">${fullName}</div>
+            <div style="font-size:13px;">ID: ${enrolleeId}</div>
+            <div style="font-size:13px;">DOB: ${dob}</div>
+            <div style="font-size:13px;">Blood Group: ${bloodGroup}</div>
+            <div style="font-size:13px;">Gender: ${gender}</div>
+            <div style="font-size:13px;">Relation: Dependent</div>
+            <button type="button" onclick='window.downloadDependentIDCard(${JSON.stringify(dep).replace(/'/g, "&#39;")})'>Download</button>
+        `;
+        dependentsGrid.appendChild(depCard);
+    });
+
+    // Expose downloadDependentIDCard globally for inline onclick
+    window.downloadDependentIDCard = function(dep) {
+        if (typeof dep === 'string') dep = JSON.parse(dep.replace(/&#39;/g, "'"));
+        let surname = dep["Last Name"] || '';
+        let firstname = dep["First Name"] || '';
+        let middleName = dep["Middle Name"] || '';
+        if (middleName.length > 1) middleName = `${middleName.charAt(0)}.`;
+        const fullName = `${surname} ${middleName} ${firstname}`.trim();
+        const dob = dep["Birth Date"] || '';
+        const bloodGroup = dep["Blood Group"] || '-';
+        const cin = dep["Enrollee ID"] || '';
+        let photoUrl = dep.photo_url || '';
+        if (window.dependentPhotoFiles && window.dependentPhotoFiles[cin]) {
+            const file = window.dependentPhotoFiles[cin];
+            const reader = new FileReader();
+            reader.onload = function (evt) {
+                _downloadDependentCard(fullName, dob, bloodGroup, cin, evt.target.result);
+            };
+            reader.readAsDataURL(file);
+            return;
+        }
+        _downloadDependentCard(fullName, dob, bloodGroup, cin, photoUrl);
+    }
+
+    function showDependentsMessage(message, isError = true) {
+        let msgDiv = document.getElementById('dependentsMessage');
+        if (!msgDiv) {
+            const dependentsSection = document.getElementById('dependentsSection');
+            msgDiv = document.createElement('div');
+            msgDiv.id = 'dependentsMessage';
+            msgDiv.style.margin = '10px 0 10px 0';
+            msgDiv.style.fontWeight = 'bold';
+            dependentsSection.insertBefore(msgDiv, dependentsSection.firstChild.nextSibling);
+        }
+        msgDiv.style.color = isError ? 'red' : 'green';
+        msgDiv.textContent = message;
+        setTimeout(() => { if (msgDiv) msgDiv.textContent = ''; }, 5000);
+    }
+
+    window.handleDependentPhotoChange = function(enrolleeId, input) {
+        if (!input.files || !input.files[0]) return;
+        const file = input.files[0];
+        window.dependentPhotoFiles[enrolleeId] = file;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = document.getElementById(`depPhotoPreview_${enrolleeId}`);
+            if (img) img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    };
+}
+
+function _downloadDependentCard(fullName, dob, bloodGroup, cin, photoUrl) {
+    const canvas = document.getElementById('dependentIdCardCanvas');
+    const ctx = canvas.getContext('2d');
+    const template = new Image();
+    template.src = 'template.jpg';
+    template.onload = function () {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(template, 0, 0, canvas.width, canvas.height);
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = function () {
+            ctx.drawImage(img, 30, 70, 170, 190);
+            ctx.font = 'bold 24px "Agency FB"';
+            ctx.fillStyle = '#000';
+            ctx.fillText(fullName.toUpperCase(), 290, 120);
+            ctx.fillText(formatDate(dob), 370, 170);
+            ctx.fillText(bloodGroup, 360, 210);
+            ctx.fillText(cin, 270, 255);
+            ctx.save();
+            ctx.font = 'bold 32px Arial';
+            ctx.fillStyle = '#d32f2f';
+            ctx.rotate(-0.1);
+            ctx.fillText('DEPENDENT', 400, 60);
+            ctx.restore();
+            generateQRCode(cin, function(qrImage) {
+                ctx.drawImage(qrImage, 460, 290, 100, 100);
+                // Download as PNG using CIN as filename
+                const dataUrl = canvas.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.href = dataUrl;
+                link.download = `${cin || 'Dependent_ID'}.png`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+        };
+        img.onerror = function () {
+            displayMessage('Failed to load dependent photo.', true);
+        };
+        img.src = photoUrl;
+    };
+}
+
+function printAllDependents() {
+    const dependentsGrid = document.getElementById('dependentsGrid');
+    const depCards = dependentsGrid.querySelectorAll('.dependent-card');
+    let dependents = [];
+    depCards.forEach(card => {
+        // Extract dep info from button's onclick
+        const btn = card.querySelector('button');
+        if (btn && btn.getAttribute('onclick')) {
+            let depStr = btn.getAttribute('onclick').match(/downloadDependentIDCard\((.*)\)/);
+            if (depStr && depStr[1]) {
+                let depObj = depStr[1].replace(/&#39;/g, "'");
+                dependents.push(depObj);
+            }
+        }
+    });
+    // Download all dependents one by one
+    let idx = 0;
+    function downloadNext() {
+        if (idx >= dependents.length) return;
+        window.downloadDependentIDCard(dependents[idx]);
+        idx++;
+        setTimeout(downloadNext, 1200); // Wait for download to trigger
+    }
+    downloadNext();
+}
+
+// Expose dependent printing functions globally
+if (typeof window !== 'undefined') {
+    window.searchDependents = searchDependents;
+    window.printAllDependents = printAllDependents;
+}
+
+// Debug: Log when the script is loaded and when the functions are attached
+console.log('script.js loaded');
+if (typeof searchDependents === 'function') {
+    console.log('searchDependents is defined and attached to window');
+}
+if (typeof printAllDependents === 'function') {
+    console.log('printAllDependents is defined and attached to window');
+}
+
+// Live preview for first and second photo handled here for maintainability
+// (moved from index.html inline script)
+document.addEventListener('DOMContentLoaded', function () {
+    // First photo file
+    var photoInput = document.getElementById('photo');
+    var photoPreview = document.getElementById('photoPreview');
+    if (photoInput && photoPreview) {
+        photoInput.addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (evt) {
+                    photoPreview.src = evt.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+    // First photo URL
+    var photoUrlInput = document.getElementById('photoUrl');
+    if (photoUrlInput && photoPreview) {
+        photoUrlInput.addEventListener('input', function (e) {
+            const url = e.target.value;
+            photoPreview.src = url;
+        });
+    }
+    // Second photo file
+    var photo2Input = document.getElementById('photo2');
+    var photoPreview2 = document.getElementById('photoPreview2');
+    if (photo2Input && photoPreview2) {
+        photo2Input.addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (evt) {
+                    photoPreview2.src = evt.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+    // Second photo URL
+    var photoUrl2Input = document.getElementById('photoUrl2');
+    if (photoUrl2Input && photoPreview2) {
+        photoUrl2Input.addEventListener('input', function (e) {
+            const url = e.target.value;
+            photoPreview2.src = url;
+        });
+    }
+});
