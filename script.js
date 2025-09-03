@@ -287,8 +287,23 @@ async function searchEnrollee() {
                 enrollee = data2[0];
                 foundTable = 'new_enrollees';
             } else {
-                displayMessage('No enrollee found with the provided CIN.', true);
-                return;
+                // Try card_enrollees_new if not found
+                let { data: data3, error: error3 } = await supabase
+                    .from('card_enrollees_new')
+                    .select('*')
+                    .eq('cin', cin);
+                if (error3) {
+                    displayMessage('Error fetching enrollee details from card_enrollees_new.', true);
+                    console.error(error3);
+                    return;
+                }
+                if (data3 && data3.length > 0) {
+                    enrollee = data3[0];
+                    foundTable = 'card_enrollees_new';
+                } else {
+                    displayMessage('No enrollee found with the provided CIN.', true);
+                    return;
+                }
             }
         }
 
@@ -357,7 +372,7 @@ async function searchDependents() {
     // Try card_enrollees by cin (no phone column)
     try {
         ({ data, error } = await supabase
-            .from('card_enrollees_new')
+            .from('card_enrollees')
             .select('*')
             .eq('cin', principalInput));
     } catch (e) {
@@ -386,6 +401,25 @@ async function searchDependents() {
         if (!error2 && data2 && data2.length > 0) {
             principalDataList = principalDataList.concat(data2);
             principalCINs = principalCINs.concat(data2.map(d => d.cin));
+            foundPrincipal = true;
+        }
+    }
+    // Try card_enrollees_new by cin or phone or phone_number
+    if (!foundPrincipal || principalCINs.length === 0) {
+        let data4, error4;
+        try {
+            ({ data: data4, error: error4 } = await supabase
+                .from('card_enrollees_new')
+                .select('*')
+                .or(`cin.eq.${principalInput},phone.eq.${principalInput},phone_number.eq.${principalInput}`));
+        } catch (e) {
+            alert('Supabase connection or query failed (card_enrollees_new).');
+            showDependentsMessage('Supabase connection or query failed (card_enrollees_new).', true);
+            return;
+        }
+        if (!error4 && data4 && data4.length > 0) {
+            principalDataList = principalDataList.concat(data4);
+            principalCINs = principalCINs.concat(data4.map(d => d.cin));
             foundPrincipal = true;
         }
     }
@@ -422,9 +456,16 @@ async function searchDependents() {
     const dependentsSection = document.getElementById('dependentsSection');
     const dependentsGrid = document.getElementById('dependentsGrid');
     const printAllBtn = document.getElementById('printAllDependentsBtn');
-    if (!dependentsSection || !dependentsGrid || !printAllBtn) {
-        alert('Dependent section elements not found in HTML.');
-        return;
+    // Add bulk download button if not present
+    let bulkZipBtn = document.getElementById('bulkZipDependentsBtn');
+    if (!bulkZipBtn) {
+        bulkZipBtn = document.createElement('button');
+        bulkZipBtn.id = 'bulkZipDependentsBtn';
+        bulkZipBtn.textContent = 'Bulk Download as ZIP';
+        bulkZipBtn.style.marginLeft = '10px';
+        bulkZipBtn.style.display = 'none';
+        bulkZipBtn.onclick = bulkDownloadDependentsZip;
+        printAllBtn.parentNode.insertBefore(bulkZipBtn, printAllBtn.nextSibling);
     }
     dependentsGrid.innerHTML = '';
     // Remove duplicate names for display
@@ -459,11 +500,13 @@ async function searchDependents() {
     if (allDependents.length === 0) {
         dependentsSection.style.display = 'block';
         printAllBtn.style.display = 'none';
+        bulkZipBtn.style.display = 'none';
         showDependentsMessage('No dependents found for this principal/phone.', true);
         return;
     }
     dependentsSection.style.display = 'block';
     printAllBtn.style.display = 'inline-block';
+    bulkZipBtn.style.display = 'inline-block';
 
     if (!window.dependentPhotoFiles) window.dependentPhotoFiles = {};
     allDependents.forEach((dep, idx) => {
@@ -550,32 +593,40 @@ async function searchDependents() {
 
 function _downloadDependentCard(fullName, dob, bloodGroup, cin, photoUrl) {
     const canvas = document.getElementById('dependentIdCardCanvas');
-    const ctx = canvas.getContext('2d');
     const template = new Image();
     template.src = 'template.jpg';
     template.onload = function () {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(template, 0, 0, canvas.width, canvas.height);
+        // Create a high-res canvas matching the template's natural size
+        const highResCanvas = document.createElement('canvas');
+        highResCanvas.width = template.naturalWidth || 800;
+        highResCanvas.height = template.naturalHeight || 400;
+        const highResCtx = highResCanvas.getContext('2d');
+        // Draw template
+        highResCtx.drawImage(template, 0, 0, highResCanvas.width, highResCanvas.height);
+        // Load photo and draw at scaled position
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload = function () {
-            ctx.drawImage(img, 30, 70, 170, 190);
-            ctx.font = 'bold 24px "Agency FB"';
-            ctx.fillStyle = '#000';
-            ctx.fillText(fullName.toUpperCase(), 290, 120);
-            ctx.fillText(formatDate(dob), 370, 170);
-            ctx.fillText(bloodGroup, 360, 210);
-            ctx.fillText(cin, 270, 255);
-            ctx.save();
-            ctx.font = 'bold 32px Arial';
-            ctx.fillStyle = '#d32f2f';
-            ctx.rotate(-0.1);
-            ctx.fillText('DEPENDENT', 400, 60);
-            ctx.restore();
+            // Scale positions and sizes from on-screen canvas to high-res
+            const scaleX = highResCanvas.width / canvas.width;
+            const scaleY = highResCanvas.height / canvas.height;
+            highResCtx.drawImage(img, 30 * scaleX, 70 * scaleY, 170 * scaleX, 190 * scaleY);
+            highResCtx.font = `bold ${24 * scaleY}px 'Agency FB'`;
+            highResCtx.fillStyle = '#000';
+            highResCtx.fillText(fullName.toUpperCase(), 290 * scaleX, 120 * scaleY);
+            highResCtx.fillText(formatDate(dob), 370 * scaleX, 170 * scaleY);
+            highResCtx.fillText(bloodGroup, 360 * scaleX, 210 * scaleY);
+            highResCtx.fillText(cin, 270 * scaleX, 255 * scaleY);
+            highResCtx.save();
+            highResCtx.font = `bold ${32 * scaleY}px Arial`;
+            highResCtx.fillStyle = '#d32f2f';
+            highResCtx.rotate(-0.1);
+            highResCtx.fillText('DEPENDENT', 400 * scaleX, 60 * scaleY);
+            highResCtx.restore();
             generateQRCode(cin, function(qrImage) {
-                ctx.drawImage(qrImage, 460, 290, 100, 100);
+                highResCtx.drawImage(qrImage, 460 * scaleX, 290 * scaleX, 100 * scaleX, 100 * scaleY);
                 // Download as PNG using CIN as filename
-                const dataUrl = canvas.toDataURL('image/png');
+                const dataUrl = highResCanvas.toDataURL('image/png');
                 const link = document.createElement('a');
                 link.href = dataUrl;
                 link.download = `${cin || 'Dependent_ID'}.png`;
@@ -617,10 +668,96 @@ function printAllDependents() {
     downloadNext();
 }
 
+async function bulkDownloadDependentsZip() {
+    const dependentsGrid = document.getElementById('dependentsGrid');
+    const depCards = dependentsGrid.querySelectorAll('.dependent-card');
+    let dependents = [];
+    depCards.forEach(card => {
+        const btn = card.querySelector('button');
+        if (btn && btn.getAttribute('onclick')) {
+            let depStr = btn.getAttribute('onclick').match(/downloadDependentIDCard\((.*)\)/);
+            if (depStr && depStr[1]) {
+                let depObj = depStr[1].replace(/&#39;/g, "'");
+                dependents.push(depObj);
+            }
+        }
+    });
+    if (dependents.length === 0) {
+        displayMessage('No dependents to download.', true);
+        return;
+    }
+    const zip = new JSZip();
+    for (let i = 0; i < dependents.length; i++) {
+        let dep = dependents[i];
+        if (typeof dep === 'string') dep = JSON.parse(dep.replace(/&#39;/g, "'"));
+        let surname = dep["Last Name"] || '';
+        let firstname = dep["First Name"] || '';
+        let middleName = dep["Middle Name"] || '';
+        if (middleName.length > 1) middleName = `${middleName.charAt(0)}.`;
+        const fullName = `${surname} ${middleName} ${firstname}`.trim();
+        const dob = dep["Birth Date"] || '';
+        const bloodGroup = dep["Blood Group"] || '-';
+        const cin = dep["Enrollee ID"] || '';
+        let photoUrl = dep.photo_url || '';
+        if (window.dependentPhotoFiles && window.dependentPhotoFiles[cin]) {
+            photoUrl = await new Promise(resolve => {
+                const reader = new FileReader();
+                reader.onload = e => resolve(e.target.result);
+                reader.readAsDataURL(window.dependentPhotoFiles[cin]);
+            });
+        }
+        await new Promise(resolve => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 600; canvas.height = 400;
+            const ctx = canvas.getContext('2d');
+            const template = new Image();
+            template.src = 'template.jpg';
+            template.onload = function () {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(template, 0, 0, canvas.width, canvas.height);
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = function () {
+                    ctx.drawImage(img, 30, 70, 170, 190);
+                    ctx.font = 'bold 24px "Agency FB"';
+                    ctx.fillStyle = '#000';
+                    ctx.fillText(fullName.toUpperCase(), 290, 120);
+                    ctx.fillText(formatDate(dob), 370, 170);
+                    ctx.fillText(bloodGroup, 360, 210);
+                    ctx.fillText(cin, 270, 255);
+                    ctx.save();
+                    ctx.font = 'bold 32px Arial';
+                    ctx.fillStyle = '#d32f2f';
+                    ctx.rotate(-0.1);
+                    ctx.fillText('DEPENDENT', 400, 60);
+                    ctx.restore();
+                    generateQRCode(cin, function(qrImage) {
+                        ctx.drawImage(qrImage, 460, 290, 100, 100);
+                        canvas.toBlob(function(blob) {
+                            zip.file(`${cin || 'Dependent_ID'}.png`, blob);
+                            resolve();
+                        });
+                    });
+                };
+                img.onerror = function () {
+                    displayMessage('Failed to load dependent photo for ' + fullName, true);
+                    resolve();
+                };
+                img.src = photoUrl;
+            };
+        });
+    }
+    zip.generateAsync({ type: 'blob' }).then(function (content) {
+        saveAs(content, 'Dependents_IDCards.zip');
+        displayMessage('Bulk dependent ID cards downloaded as ZIP.', false);
+    });
+}
+
 // Expose dependent printing functions globally
 if (typeof window !== 'undefined') {
     window.searchDependents = searchDependents;
     window.printAllDependents = printAllDependents;
+    window.bulkDownloadDependentsZip = bulkDownloadDependentsZip;
 }
 
 // Debug: Log when the script is loaded and when the functions are attached
