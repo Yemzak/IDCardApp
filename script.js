@@ -528,27 +528,32 @@ async function searchDependents() {
         depCard.innerHTML = `
             <img id="depPhotoPreview_${enrolleeId}" src="${photoUrl}" alt="Photo" style="max-width:80px;max-height:80px;display:block;margin:auto;">
             <input type="file" accept="image/*" style="margin-top:5px;" onchange="handleDependentPhotoChange('${enrolleeId}', this)">
-            <div style="font-weight:bold;margin-top:5px;">${fullName}</div>
+            <div style="font-weight:bold;margin-top:5px;">
+                <input type="text" id="depSurname_${enrolleeId}" value="${surname}" placeholder="Surname" style="width:90px;"> 
+                <input type="text" id="depMiddleName_${enrolleeId}" value="${middleName}" placeholder="Middle" style="width:40px;"> 
+                <input type="text" id="depFirstname_${enrolleeId}" value="${firstname}" placeholder="Firstname" style="width:90px;">
+            </div>
             <div style="font-size:13px;">ID: ${enrolleeId}</div>
-            <div style="font-size:13px;">DOB: ${dob}</div>
-            <div style="font-size:13px;">Blood Group: ${bloodGroup}</div>
-            <div style="font-size:13px;">Gender: ${gender}</div>
+            <div style="font-size:13px;">DOB: <input type="date" id="depDOB_${enrolleeId}" value="${dob}" style="width:120px;"></div>
+            <div style="font-size:13px;">Blood Group: <input type="text" id="depBlood_${enrolleeId}" value="${bloodGroup}" style="width:60px;"></div>
+            <div style="font-size:13px;">Gender: <input type="text" id="depGender_${enrolleeId}" value="${gender}" style="width:60px;"></div>
             <div style="font-size:13px;">Relation: Dependent</div>
-            <button type="button" onclick='window.downloadDependentIDCard(${JSON.stringify(dep).replace(/'/g, "&#39;")})'>Download</button>
+            <button type="button" onclick='window.downloadDependentIDCard(${JSON.stringify(dep).replace(/'/g, "&#39;")}, "${enrolleeId}")'>Download</button>
         `;
         dependentsGrid.appendChild(depCard);
     });
 
     // Expose downloadDependentIDCard globally for inline onclick
-    window.downloadDependentIDCard = function(dep) {
+    window.downloadDependentIDCard = function(dep, enrolleeId) {
         if (typeof dep === 'string') dep = JSON.parse(dep.replace(/&#39;/g, "'"));
-        let surname = dep["Last Name"] || '';
-        let firstname = dep["First Name"] || '';
-        let middleName = dep["Middle Name"] || '';
+        // Get edited values
+        let surname = document.getElementById(`depSurname_${enrolleeId}`)?.value || dep["Last Name"] || '';
+        let firstname = document.getElementById(`depFirstname_${enrolleeId}`)?.value || dep["First Name"] || '';
+        let middleName = document.getElementById(`depMiddleName_${enrolleeId}`)?.value || dep["Middle Name"] || '';
         if (middleName.length > 1) middleName = `${middleName.charAt(0)}.`;
         const fullName = `${surname} ${middleName} ${firstname}`.trim();
-        const dob = dep["Birth Date"] || '';
-        const bloodGroup = dep["Blood Group"] || '-';
+        const dob = document.getElementById(`depDOB_${enrolleeId}`)?.value || dep["Birth Date"] || '';
+        const bloodGroup = document.getElementById(`depBlood_${enrolleeId}`)?.value || dep["Blood Group"] || '-';
         const cin = dep["Enrollee ID"] || '';
         let photoUrl = dep.photo_url || '';
         if (window.dependentPhotoFiles && window.dependentPhotoFiles[cin]) {
