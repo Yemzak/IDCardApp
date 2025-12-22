@@ -4,8 +4,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EDHIC IDCARD PORTAL</title>
+    <title>EDOHIC IDCARD PORTAL</title>
     <link rel="stylesheet" href="style.css">
+
+    <!-- Safe stubs for inline onclicks so missing scripts don't cause ReferenceError on click -->
+    <script>
+        (function () {
+            const stub = function () { try { if (typeof showToast === 'function') showToast('App is still loading, please wait...', true); else console.warn('App not ready'); } catch (e) { } };
+            window.generateIDCard = window.generateIDCard || stub;
+            window.downloadIDCard = window.downloadIDCard || stub;
+            window.printIDCard = window.printIDCard || stub;
+            window.searchEnrollee = window.searchEnrollee || stub;
+            window.searchDependents = window.searchDependents || stub;
+            window.printAllDependents = window.printAllDependents || stub;
+        })();
+    </script>
 
     <!-- Required Libraries -->
     <script src="qrcode.min.js"></script>
@@ -20,8 +33,12 @@
     <header style="text-align: center; margin-top: 20px;">
         <img src="logo.png" alt="EDHIC Logo" style="width: 150px; height: auto;">
     </header>
-    
-    <h1>EDHIC ID-CARD PORTAL</h1>
+    <!-- Inline test removed (clean mode) -->
+    <!-- Supabase connection status -->
+    <div id="supabaseStatus" style="text-align:center;margin-top:6px;font-weight:bold;color:#777;">Supabase: Checking...
+    </div>
+
+    <h1>EDOHIC ID-CARD PORTAL</h1>
 
     <div id="message" style="color: red; font-weight: bold; text-align: center; margin: 10px 0;"></div>
 
@@ -32,7 +49,7 @@
                 <label for="cin">CIN:</label>
                 <input type="text" id="cin" placeholder="Enter CIN" required><br>
                 
-                <button type="button" onclick="searchEnrollee()">Search</button>
+                <button type="button" id="searchBtn">Search</button>
                 
                 <hr>
 
@@ -50,9 +67,9 @@
                 <input type="file" id="photo" accept="image/*" required><br>
                 <img id="photoPreview" style="max-width:100px;max-height:100px;display:block;margin-bottom:10px;">
                 
-                <button type="button" onclick="generateIDCard()">Generate ID Card</button>
-                <button type="button" onclick="downloadIDCard()">Download</button>
-                <button type="button" onclick="printIDCard()">Print</button>
+                <button type="button" id="generateBtn">Generate ID Card</button>
+                <button type="button" id="downloadBtn">Download</button>
+                <button type="button" id="printBtn">Print</button>
             </form>
         </div>
 
@@ -65,12 +82,11 @@
             <h2>Dependent ID Card Printing</h2>
             <label for="principalSearch">Principal CIN or Phone:</label>
             <input type="text" id="principalSearch" placeholder="Enter Principal CIN or Phone">
-            <button type="button" onclick="searchDependents()">Search Dependents</button>
+            <button type="button" id="searchDependentsBtn">Search Dependents</button>
             <div id="dependentsSection" style="display:none; margin-top:20px;">
                 <div id="dependentsGrid"
                     style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;"></div>
-                <button id="printAllDependentsBtn" type="button" style="display:none;margin-top:18px;"
-                    onclick="printAllDependents()">Download All Dependents</button>
+                <button id="printAllDependentsBtn" type="button" style="display:none;margin-top:18px;">Download All Dependents</button>
                 <canvas id="dependentIdCardCanvas" width="600" height="400" style="display:none;"></canvas>
             </div>
         </div>

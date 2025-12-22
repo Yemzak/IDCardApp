@@ -2,7 +2,113 @@
 
 const supabaseUrl = 'https://peqgqiyfpzypkjbchlco.supabase.co'; // Replace this with your actual Supabase project URL
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBlcWdxaXlmcHp5cGtqYmNobGNvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0MzkzMzkwMywiZXhwIjoyMDU5NTA5OTAzfQ.3UcoSGUXlDrMum3BnqYaN9Ud9HdNXos4NbfCiyiUAlk'; // Replace this with your actual Supabase anon key
-const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+// Initialize Supabase client if available (guard against CDN load failures)
+// Use a different variable name (supabaseClient) to avoid colliding with the
+// global `supabase` object installed by the SDK which can be non-configurable.
+let supabaseClient = null;
+try {
+    if (window.supabase && typeof window.supabase.createClient === 'function') {
+        supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+    } else {
+        console.warn('Supabase client not available on window; continuing without Supabase.');
+    }
+} catch (e) {
+    console.error('Failed to initialize Supabase client:', e);
+    supabaseClient = null;
+}
+
+// A resilient wrapper for generating ID cards. Use this when the primary
+// generateIDCard function is missing or throws unexpectedly.
+async function generateIDCardSafe() {
+    try {
+        const name = (document.getElementById('name')?.value || '').trim();
+        const dob = document.getElementById('dob')?.value || '';
+        const bloodGroup = (document.getElementById('bloodGroup')?.value || '').trim() || '-';
+        const cin = (document.getElementById('cin')?.value || '').trim();
+
+        if (!name || !cin) {
+            displayMessage('Please enter Name and CIN before generating the ID card.', true);
+            return;
+        }
+
+        let photoUrl = '';
+        const photoInput = document.getElementById('photo');
+        if (photoInput && photoInput.files && photoInput.files[0]) {
+            // read file as data URL
+            photoUrl = await new Promise((resolve, reject) => {
+                const fr = new FileReader();
+                fr.onload = () => resolve(fr.result);
+                fr.onerror = reject;
+                fr.readAsDataURL(photoInput.files[0]);
+            });
+            const preview = document.getElementById('photoPreview');
+            if (preview) preview.src = photoUrl;
+        } else {
+            const preview = document.getElementById('photoPreview');
+            if (preview && preview.src) photoUrl = preview.src;
+        }
+
+        if (!photoUrl) {
+            displayMessage('Please upload or provide a photo for the ID card.', true);
+            return;
+        }
+
+        // Prefer the existing generateIDCard if available
+        if (typeof generateIDCard === 'function') {
+            try {
+                return generateIDCard();
+            } catch (err) {
+                console.warn('generateIDCard threw, falling back to drawIDCard:', err);
+            }
+        }
+
+        // Fallback: use drawIDCard directly
+        drawIDCard(name, dob, bloodGroup, cin, photoUrl, function () {
+            displayMessage('ID Card generated successfully (fallback).', false);
+            const canvas = document.getElementById('idCardCanvas');
+            if (canvas) canvas.style.display = 'block';
+        });
+    } catch (err) {
+        console.error('generateIDCardSafe error:', err);
+        displayMessage('An unexpected error occurred while generating the ID card.', true);
+    }
+}
+window.generateIDCardSafe = generateIDCardSafe;
+
+// Global error handlers to surface runtime issues
+window.addEventListener('error', function (e) {
+    console.error('Global error caught:', e.message, e.error || '');
+    try { if (typeof showToast === 'function') showToast('An error occurred: ' + e.message, true); } catch (err) {}
+});
+window.addEventListener('unhandledrejection', function (e) {
+    console.error('Unhandled promise rejection:', e.reason);
+    try { if (typeof showToast === 'function') showToast('An error occurred: ' + (e.reason && e.reason.message ? e.reason.message : e.reason), true); } catch (err) {}
+});
+
+// Update a small status element in the UI to indicate if Supabase is available
+function updateSupabaseStatus() {
+    const el = document.getElementById('supabaseStatus');
+    if (!el) return;
+    if (supabaseClient) {
+        el.textContent = 'Supabase: Connected';
+        el.style.color = '#43a047'; // green
+    } else {
+        el.textContent = 'Supabase: Unavailable (offline mode)';
+        el.style.color = '#d32f2f'; // red
+        // Show a non-blocking toast once to inform the user
+        try {
+            if (!window.supabaseUnavailableNotified && typeof showToast === 'function') {
+                showToast('Supabase is unavailable. The app will work in offline mode.', true);
+                window.supabaseUnavailableNotified = true;
+            }
+        } catch (e) {
+            // If showToast isn't available yet, ignore silently
+            console.warn('showToast not available to show Supabase offline notification yet.');
+        }
+    }
+}
+window.updateSupabaseStatus = updateSupabaseStatus;
+
 
 function generateIDCard() {
     const name = document.getElementById('name').value;
@@ -257,7 +363,7 @@ async function searchEnrollee() {
 
     try {
         // Try card_enrollees first
-        let { data, error } = await supabase
+        let { data, error } = await supabaseClient
             .from('card_enrollees')
             .select('*')
             .eq('cin', cin);
@@ -274,7 +380,7 @@ async function searchEnrollee() {
             foundTable = 'card_enrollees';
         } else {
             // Try new_enrollees if not found
-            let { data: data2, error: error2 } = await supabase
+            let { data: data2, error: error2 } = await supabaseClient
                 .from('new_enrollees')
                 .select('*')
                 .eq('cin', cin);
@@ -288,7 +394,7 @@ async function searchEnrollee() {
                 foundTable = 'new_enrollees';
             } else {
                 // Try card_enrollees_new if not found
-                let { data: data3, error: error3 } = await supabase
+                let { data: data3, error: error3 } = await supabaseClient
                     .from('card_enrollees_new')
                     .select('*')
                     .eq('cin', cin);
@@ -308,26 +414,26 @@ async function searchEnrollee() {
         }
 
         // Log individual name components for debugging
-        let surname = enrollee.surname || '';
-        let firstname = enrollee.first_name || '';
-        let middleName = enrollee.middle_name || '';
+        let surname = enrollee.surname || enrollee["Last Name"] || '';
+        let firstname = enrollee.first_name || enrollee["First Name"] || '';
+        let middleName = enrollee.middle_name || enrollee["Middle Name"] || '';
         // Fallbacks for new_enrollees table field names
         if (!surname && enrollee.lastname) surname = enrollee.lastname;
         if (!firstname && enrollee.firstname) firstname = enrollee.firstname;
         if (!middleName && enrollee.middlename) middleName = enrollee.middlename;
-        console.log('Surname:', surname);
-        console.log('First Name:', firstname);
-        console.log('Middle Name:', middleName);
+        // Name components extracted
 
         // Format full name as 'Surname (Middle Initial if long) Firstname'
         if (middleName.length > 1) {
             middleName = `${middleName.charAt(0)}.`; // Abbreviate middle name if long
         }
         const fullName = `${surname} ${middleName} ${firstname}`.trim();
+        // Support DOB from dependants2 as well
+        let dob = enrollee.dob || enrollee.date_of_birth || enrollee.dobirth || enrollee["Birth Date"] || '';
         document.getElementById('name').value = fullName;
-        document.getElementById('dob').value = enrollee.dob || enrollee.date_of_birth || enrollee.dobirth || '';
-        document.getElementById('bloodGroup').value = enrollee.blood_group || enrollee.bloodgroup || '-';
-        document.getElementById('cin').value = enrollee.cin;
+        document.getElementById('dob').value = dob;
+        document.getElementById('bloodGroup').value = enrollee.blood_group || enrollee.bloodgroup || enrollee["Blood Group"] || '-';
+        document.getElementById('cin').value = enrollee.cin || enrollee["Enrollee ID"] || '';
         // First photo
         if (enrollee.photo_url) {
             var photoPreview = document.getElementById('photoPreview');
@@ -371,7 +477,7 @@ async function searchDependents() {
     let data, error;
     // Try card_enrollees by cin (no phone column)
     try {
-        ({ data, error } = await supabase
+            ({ data, error } = await supabaseClient
             .from('card_enrollees')
             .select('*')
             .eq('cin', principalInput));
@@ -389,7 +495,7 @@ async function searchDependents() {
     if (!foundPrincipal || principalCINs.length === 0) {
         let data2, error2;
         try {
-            ({ data: data2, error: error2 } = await supabase
+            ({ data: data2, error: error2 } = await supabaseClient
                 .from('new_enrollees')
                 .select('*')
                 .or(`cin.eq.${principalInput},phone.eq.${principalInput},phone_number.eq.${principalInput}`));
@@ -408,7 +514,7 @@ async function searchDependents() {
     if (!foundPrincipal || principalCINs.length === 0) {
         let data4, error4;
         try {
-            ({ data: data4, error: error4 } = await supabase
+            ({ data: data4, error: error4 } = await supabaseClient
                 .from('card_enrollees_new')
                 .select('*')
                 .or(`cin.eq.${principalInput},phone.eq.${principalInput},phone_number.eq.${principalInput}`));
@@ -427,7 +533,7 @@ async function searchDependents() {
     if (!foundPrincipal || principalCINs.length === 0) {
         let data3, error3;
         try {
-            ({ data: data3, error: error3 } = await supabase
+            ({ data: data3, error: error3 } = await supabaseClient
                 .from('dependants2')
                 .select('*')
                 .or(`Enrollee ID.eq.${principalInput},Phone Number.eq.${principalInput}`));
@@ -440,6 +546,65 @@ async function searchDependents() {
             principalDataList = principalDataList.concat(data3);
             principalCINs = principalCINs.concat(data3.map(d => d["Enrollee ID"]));
             foundPrincipal = true;
+        }
+    }
+    // If input matches a dependent CIN format, search dependants2 by Enrollee ID directly
+    if (/^[A-Z]+\/[A-Z]+\/\d+\/\d+$/.test(principalInput)) {
+        let depData, depError;
+        try {
+            ({ data: depData, error: depError } = await supabaseClient
+                .from('dependants2')
+                .select('*')
+                .eq('Enrollee ID', principalInput));
+        } catch (e) {
+            alert('Supabase connection or query failed (dependants2 by CIN).');
+            showDependentsMessage('Supabase connection or query failed (dependants2 by CIN).', true);
+            return;
+        }
+        if (!depError && depData && depData.length > 0) {
+            // Show only this dependent
+            principalDataList = [];
+            principalCINs = [];
+            allDependents = depData;
+            dependentsSection.style.display = 'block';
+            printAllBtn.style.display = 'inline-block';
+            dependentsGrid.innerHTML = '';
+            // ...existing code for displaying dependents...
+            // Use the same forEach logic as below to display editable card
+            allDependents.forEach((dep, idx) => {
+                let surname = dep["Last Name"] || '';
+                let firstname = dep["First Name"] || '';
+                let middleName = dep["Middle Name"] || '';
+                let gender = dep["Gender"] || '';
+                let dob = dep["Birth Date"] || '';
+                let bloodGroup = dep["Blood Group"] || '';
+                let enrolleeId = dep["Enrollee ID"] || '';
+                if (middleName.length > 1) middleName = `${middleName.charAt(0)}.`;
+                const fullName = `${surname} ${middleName} ${firstname}`.trim();
+                const photoUrl = dep.photo_url || '';
+                const depCard = document.createElement('div');
+                depCard.className = 'dependent-card';
+                depCard.style.border = '1px solid #ccc';
+                depCard.style.padding = '10px';
+                depCard.style.background = '#fafbfc';
+                depCard.innerHTML = `
+                    <img id="depPhotoPreview_${enrolleeId}" src="${photoUrl}" alt="Photo" style="max-width:80px;max-height:80px;display:block;margin:auto;">
+                    <input type="file" accept="image/*" style="margin-top:5px;" onchange="handleDependentPhotoChange('${enrolleeId}', this)">
+                    <div style="font-weight:bold;margin-top:5px;">
+                        <input type="text" id="depSurname_${enrolleeId}" value="${surname}" placeholder="Surname" style="width:90px;"> 
+                        <input type="text" id="depMiddleName_${enrolleeId}" value="${middleName}" placeholder="Middle" style="width:40px;"> 
+                        <input type="text" id="depFirstname_${enrolleeId}" value="${firstname}" placeholder="Firstname" style="width:90px;">
+                    </div>
+                    <div style="font-size:13px;">ID: ${enrolleeId}</div>
+                    <div style="font-size:13px;">DOB: <input type="date" id="depDOB_${enrolleeId}" value="${dob}" style="width:120px;"></div>
+                    <div style="font-size:13px;">Blood Group: <input type="text" id="depBlood_${enrolleeId}" value="${bloodGroup}" style="width:60px;"></div>
+                    <div style="font-size:13px;">Gender: <input type="text" id="depGender_${enrolleeId}" value="${gender}" style="width:60px;"></div>
+                    <div style="font-size:13px;">Relation: Dependent</div>
+                    <button type="button" onclick='window.downloadDependentIDCard(${JSON.stringify(dep).replace(/'/g, "&#39;")}, "${enrolleeId}")'>Download</button>
+                `;
+                dependentsGrid.appendChild(depCard);
+            });
+            return;
         }
     }
     if (!foundPrincipal || principalCINs.length === 0) {
@@ -477,7 +642,7 @@ async function searchDependents() {
     for (const principalCIN of principalCINs) {
         let dependents, depError;
         try {
-            ({ data: dependents, error: depError } = await supabase
+            ({ data: dependents, error: depError } = await supabaseClient
                 .from('dependants2')
                 .select('*')
                 .ilike('Enrollee ID', `${principalCIN}/%`));
@@ -761,22 +926,23 @@ async function bulkDownloadDependentsZip() {
 // Expose dependent printing functions globally
 if (typeof window !== 'undefined') {
     window.searchDependents = searchDependents;
+    window.searchEnrollee = typeof searchEnrollee === 'function' ? searchEnrollee : undefined;
     window.printAllDependents = printAllDependents;
     window.bulkDownloadDependentsZip = bulkDownloadDependentsZip;
+    // Also expose single-ID helpers so inline onclicks in HTML work reliably
+    window.generateIDCard = typeof generateIDCard === 'function' ? generateIDCard : undefined;
+    window.downloadIDCard = typeof downloadIDCard === 'function' ? downloadIDCard : undefined;
+    window.printIDCard = typeof printIDCard === 'function' ? printIDCard : undefined;
 }
 
 // Debug: Log when the script is loaded and when the functions are attached
-console.log('script.js loaded');
-if (typeof searchDependents === 'function') {
-    console.log('searchDependents is defined and attached to window');
-}
-if (typeof printAllDependents === 'function') {
-    console.log('printAllDependents is defined and attached to window');
-}
+// script loaded
 
 // Live preview for first and second photo handled here for maintainability
 // (moved from index.html inline script)
 document.addEventListener('DOMContentLoaded', function () {
+    // Refresh Supabase status when DOM is ready
+    if (typeof updateSupabaseStatus === 'function') updateSupabaseStatus();
     // First photo file
     var photoInput = document.getElementById('photo');
     var photoPreview = document.getElementById('photoPreview');
@@ -800,6 +966,144 @@ document.addEventListener('DOMContentLoaded', function () {
             photoPreview.src = url;
         });
     }
+    // Wire up Generate / Download / Print buttons safely (avoid inline onclick ReferenceError)
+    // Attaching Generate/Download/Print buttons
+    const genBtn = document.getElementById('generateBtn');
+    if (genBtn) {
+        genBtn.addEventListener('click', function () {
+            try {
+                if (typeof generateIDCard === 'function') return generateIDCard();
+                displayMessage('Generate function is not available.', true);
+            } catch (err) {
+                console.error('Error invoking generateIDCard:', err);
+                displayMessage('An error occurred while generating the ID card.', true);
+            }
+        });
+        // Fallback: ensure the safe generator is bound directly (covers cases where other handlers fail)
+        try {
+            genBtn.onclick = async function (e) {
+                try {
+                    // simple visual feedback
+                    const old = genBtn.textContent;
+                    genBtn.textContent = 'Generating...';
+                    genBtn.disabled = true;
+                    if (typeof generateIDCardSafe === 'function') {
+                        await generateIDCardSafe();
+                    } else if (typeof generateIDCard === 'function') {
+                        await generateIDCard();
+                    } else {
+                        displayMessage('No generator function available.', true);
+                    }
+                    genBtn.textContent = old;
+                    genBtn.disabled = false;
+                } catch (err) {
+                    console.error('generateBtn onclick fallback error:', err);
+                    try { genBtn.textContent = old; genBtn.disabled = false; } catch (_) {}
+                    displayMessage('An error occurred while generating the ID card.', true);
+                }
+            };
+        } catch (e) {
+            console.warn('Could not attach onclick fallback for generateBtn:', e);
+        }
+        // Removed extra pointer/touch debug listeners
+    }
+    const dlBtn = document.getElementById('downloadBtn');
+    if (dlBtn) {
+        dlBtn.addEventListener('click', function () {
+            try {
+                if (typeof downloadIDCard === 'function') return downloadIDCard();
+                displayMessage('Download function is not available.', true);
+            } catch (err) {
+                console.error('Error invoking downloadIDCard:', err);
+                displayMessage('An error occurred while downloading the ID card.', true);
+            }
+        });
+    }
+    const prBtn = document.getElementById('printBtn');
+    if (prBtn) {
+        prBtn.addEventListener('click', function () {
+            try {
+                if (typeof printIDCard === 'function') return printIDCard();
+                displayMessage('Print function is not available.', true);
+            } catch (err) {
+                console.error('Error invoking printIDCard:', err);
+                displayMessage('An error occurred while printing the ID card.', true);
+            }
+        });
+    }
+    // Wire up single search button safely
+    const searchBtn = document.getElementById('searchBtn');
+    if (searchBtn) {
+        searchBtn.addEventListener('click', function () {
+            try {
+                    // search button clicked
+                if (typeof searchEnrollee === 'function') return searchEnrollee();
+                displayMessage('Search function is not available.', true);
+            } catch (err) {
+                console.error('Error invoking searchEnrollee:', err);
+                displayMessage('An error occurred while searching enrollee.', true);
+            }
+        });
+    }
+    // Wire up Search Dependents and Download All Dependents (safe listeners)
+    const searchDepsBtn = document.getElementById('searchDependentsBtn');
+    if (searchDepsBtn) {
+        searchDepsBtn.addEventListener('click', function () {
+            try {
+                // search dependents button clicked
+                if (typeof searchDependents === 'function') return searchDependents();
+                displayMessage('Search Dependents function is not available.', true);
+            } catch (err) {
+                console.error('Error invoking searchDependents:', err);
+                displayMessage('An error occurred while searching dependents.', true);
+            }
+        });
+    }
+    const downloadAllDepsBtn = document.getElementById('printAllDependentsBtn');
+    if (downloadAllDepsBtn) {
+        downloadAllDepsBtn.addEventListener('click', function () {
+            try {
+                // print all dependents button clicked
+                if (typeof printAllDependents === 'function') return printAllDependents();
+                displayMessage('Download All Dependents function is not available.', true);
+            } catch (err) {
+                console.error('Error invoking printAllDependents:', err);
+                displayMessage('An error occurred while downloading all dependents.', true);
+            }
+        });
+    }
+
+    // Replace any remaining inline onclick attributes that call the named functions
+    function normalizeInlineOnclicks() {
+        const mappings = {
+            'generateIDCard': async (e) => { if (typeof generateIDCardSafe === 'function') await generateIDCardSafe(); else if (typeof generateIDCard === 'function') generateIDCard(); else displayMessage('Generate function not available.', true); },
+            'downloadIDCard': () => { if (typeof downloadIDCard === 'function') downloadIDCard(); else displayMessage('Download function not available.', true); },
+            'printIDCard': () => { if (typeof printIDCard === 'function') printIDCard(); else displayMessage('Print function not available.', true); },
+            'searchEnrollee': () => { if (typeof searchEnrollee === 'function') searchEnrollee(); else displayMessage('Search function not available.', true); },
+            'searchDependents': () => { if (typeof searchDependents === 'function') searchDependents(); else displayMessage('Search dependents function not available.', true); },
+            'printAllDependents': () => { if (typeof printAllDependents === 'function') printAllDependents(); else displayMessage('Download dependents function not available.', true); }
+        };
+        for (const fnName of Object.keys(mappings)) {
+            try {
+                const selector = `[onclick*="${fnName}"]`;
+                const els = document.querySelectorAll(selector);
+                // normalized inline onclicks if present
+                els.forEach(el => {
+                    try {
+                        el.removeAttribute('onclick');
+                        el.addEventListener('click', mappings[fnName]);
+                    } catch (e) {
+                        console.warn('Failed to normalize onclick for', fnName, e);
+                    }
+                });
+            } catch (e) {
+                console.error('normalizeInlineOnclicks error for', fnName, e);
+            }
+        }
+    }
+    try { normalizeInlineOnclicks(); } catch (e) { console.error('normalizeInlineOnclicks failed', e); }
+
+    // Debug helpers removed (clean mode)
     // Second photo file
     var photo2Input = document.getElementById('photo2');
     var photoPreview2 = document.getElementById('photoPreview2');
