@@ -6,6 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EDOHIC IDCARD PORTAL</title>
     <link rel="stylesheet" href="style.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Poppins:wght@600;700&display=swap"
+        rel="stylesheet">
 
     <!-- Safe stubs for inline onclicks so missing scripts don't cause ReferenceError on click -->
     <script>
@@ -30,50 +33,69 @@
 </head>
 
 <body>
-    <header style="text-align: center; margin-top: 20px;">
-        <img src="logo.png" alt="EDHIC Logo" style="width: 150px; height: auto;">
-    </header>
-    <!-- Inline test removed (clean mode) -->
-    <!-- Supabase connection status -->
-    <div id="supabaseStatus" style="text-align:center;margin-top:6px;font-weight:bold;color:#777;">Supabase: Checking...
-    </div>
-
-    <h1>EDOHIC ID-CARD PORTAL</h1>
+    <header class="app-header">
+        <div class="logo"><img src="logo.png" alt="EDHIC Logo"></div>
+        <div class="title">
+            <h1>EDOHIC ID-CARD PORTAL</h1>
+        </div>
+        <div id="supabaseStatus" class="status">Supabase: Checking...</div>
+        </header>
 
     <div id="message" style="color: red; font-weight: bold; text-align: center; margin: 10px 0;"></div>
 
     <div class="container">
         <div class="form-container">
             <h2>Single ID Generation</h2>
-            <form id="idForm">
-                <label for="cin">CIN:</label>
-                <input type="text" id="cin" placeholder="Enter CIN" required><br>
-                
-                <button type="button" id="searchBtn">Search</button>
-                
+            <form id="idForm" class="id-form">
+                <div class="form-section">
+                    <label for="cin">CIN</label>
+                    <div class="row">
+                        <input type="text" id="cin" placeholder="Enter CIN" required aria-label="CIN">
+                        <button type="button" id="searchBtn" class="btn-secondary">Search</button>
+                    </div>
+                </div>
+
                 <hr>
 
-                <label for="name">Name:</label>
-                <input type="text" id="name" placeholder="Enter Name" required><br>
-
-                <label for="dob">Date of Birth:</label>
-                <input type="date" id="dob" required><br>
-
-                <label for="bloodGroup">Blood Group:</label>
-                <input type="text" id="bloodGroup" placeholder="Enter Blood Group" required><br>
-
-                <label for="photo">Upload Photo:</label>
-
-                <input type="file" id="photo" accept="image/*" required><br>
-                <img id="photoPreview" style="max-width:100px;max-height:100px;display:block;margin-bottom:10px;">
+                <div class="form-section">
+                    <label for="name">Name</label>
+                    <input type="text" id="name" placeholder="Enter full name" required aria-label="Name">
                 
-                <button type="button" id="generateBtn">Generate ID Card</button>
-                <button type="button" id="downloadBtn">Download</button>
-                <button type="button" id="printBtn">Print</button>
+                    <label for="dob">Date of Birth</label>
+                    <input type="date" id="dob" required aria-label="Date of birth">
+
+                    <label for="bloodGroup">Blood Group</label>
+                    <input type="text" id="bloodGroup" placeholder="e.g. O+" required aria-label="Blood group">
+                    </div>
+
+                <div class="form-section">
+                    <label for="photo">Photo</label>
+                    <input type="file" id="photo" accept="image/*" aria-label="Upload photo">
+                    <img id="photoPreview" class="photo-preview" alt="Photo preview">
+                </div>
+
+                <div class="form-section dates">
+                    <label for="issDate">Issuance Date</label>
+                    <input type="date" id="issDate" placeholder="Issuance Date" aria-label="Issuance date">
+
+                    <label for="expDate">Expiry Date</label>
+                    <input type="date" id="expDate" placeholder="Expiry Date" aria-label="Expiry date">
+                    <div id="expHint" class="field-hint" aria-live="polite">Expiry not used for FOP IDs</div>
+                    </div>
+
+                <div class="form-actions">
+                    <button type="button" id="generateBtn" class="btn-primary">Generate ID Card</button>
+                </div>
             </form>
         </div>
 
-        <canvas id="idCardCanvas" width="600" height="400"></canvas>
+        <div class="preview-panel" aria-label="Card preview">
+            <canvas id="idCardCanvas" width="600" height="400"></canvas>
+            <div class="preview-actions">
+                <button type="button" id="downloadBtn">Download</button>
+                <button type="button" id="printBtn">Print</button>
+            </div>
+            </div>
     </div>
 
     <!-- ================= Dependent ID Card Printing Section ================= -->

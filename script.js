@@ -109,6 +109,73 @@ function updateSupabaseStatus() {
 }
 window.updateSupabaseStatus = updateSupabaseStatus;
 
+// Set default ISS and EXP dates on page load if inputs exist
+function setDefaultDates() {
+    try {
+        const iss = document.getElementById('issDate');
+        const exp = document.getElementById('expDate');
+        if (!iss && !exp) return;
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        const isoToday = `${yyyy}-${mm}-${dd}`;
+        if (iss && !iss.value) iss.value = isoToday;
+        if (exp && !exp.value) {
+            const next = new Date(today);
+            next.setFullYear(next.getFullYear() + 1);
+            const y2 = next.getFullYear();
+            const m2 = String(next.getMonth() + 1).padStart(2, '0');
+            const d2 = String(next.getDate()).padStart(2, '0');
+            exp.value = `${y2}-${m2}-${d2}`;
+        }
+    } catch (e) {
+        console.warn('setDefaultDates error', e);
+    }
+}
+
+window.addEventListener('DOMContentLoaded', setDefaultDates);
+
+function initUiListeners() {
+    try {
+        const gen = document.getElementById('generateBtn');
+        const down = document.getElementById('downloadBtn');
+        const pr = document.getElementById('printBtn');
+        if (gen) gen.addEventListener('click', function (e) { e.preventDefault(); if (typeof generateIDCardSafe === 'function') generateIDCardSafe(); else if (typeof generateIDCard === 'function') generateIDCard(); });
+        if (down) down.addEventListener('click', function (e) { e.preventDefault(); try { downloadIDCard(); } catch (err) { console.error(err); displayMessage('Download failed.', true); } });
+        if (pr) pr.addEventListener('click', function (e) { e.preventDefault(); try { printIDCard(); } catch (err) { console.error(err); displayMessage('Print failed.', true); } });
+        
+        // Watch CIN input: if it starts with FOP/ then clear and disable Expiry Date
+        const cinInput = document.getElementById('cin');
+        const expInput = document.getElementById('expDate');
+        function checkCinForFop() {
+            try {
+                if (!cinInput || !expInput) return;
+                const val = (cinInput.value || '').trim().toUpperCase();
+                const hint = document.getElementById('expHint');
+                if (val.startsWith('FOP/')) {
+                    expInput.value = '';
+                    expInput.disabled = true;
+                    if (hint) hint.classList.add('visible');
+                } else {
+                    expInput.disabled = false;
+                    if (hint) hint.classList.remove('visible');
+                }
+            } catch (e) { console.warn('checkCinForFop error', e); }
+        }
+        if (cinInput) {
+            cinInput.addEventListener('input', checkCinForFop);
+            cinInput.addEventListener('change', checkCinForFop);
+            // run once to initialise state
+            checkCinForFop();
+        }
+    } catch (e) {
+        console.warn('initUiListeners error', e);
+    }
+}
+
+window.addEventListener('DOMContentLoaded', initUiListeners);
+
 
 function generateIDCard() {
     const name = document.getElementById('name').value;
@@ -184,12 +251,60 @@ function drawIDCard(name, dob, bloodGroup, cin, photoUrl, callback) {
         ctx.fillText(`${bloodGroup}`, 360, 210);
         ctx.fillText(`${cin}`, 270, 255);
         generateQRCode(cin, function(qrImage) {
-            if (cin.includes('S-EQP')) {
-                ctx.drawImage(qrImage, 30, canvas.height - 130, 100, 100);
-            } else if (cin.includes('EQP')) {
-                ctx.drawImage(qrImage, 30, canvas.height - 130, 100, 100);
+            // Determine QR position and size based on CIN/template
+            let qrX, qrY, qrW = 100, qrH = 100;
+            if (cin.includes('S-EQP') || cin.includes('EQP')) {
+                qrX = 30;
+                qrY = canvas.height - 130;
             } else {
-                ctx.drawImage(qrImage, 460, 290, 100, 100);
+                qrX = 460;
+                qrY = 290;
+            }
+            ctx.drawImage(qrImage, qrX, qrY, qrW, qrH);
+
+            // Draw issuance date and optionally expiry above the QR code (use form inputs if present).
+            try {
+                const issInputVal = document.getElementById('issDate')?.value;
+                const expElem = document.getElementById('expDate');
+                const expInputVal = expElem ? expElem.value : null;
+                let issued = issInputVal ? new Date(issInputVal) : new Date();
+
+                const drawExp = !(cin.toUpperCase().startsWith('FOP/'));
+                // If exp element exists but is disabled, do not draw expiry
+                const expEnabled = expElem ? !expElem.disabled : false;
+
+                // Compute texts
+                const issText = 'ISS: ' + formatDate(issued.toISOString());
+                let expText = '';
+                if (drawExp) {
+                    if (expInputVal) {
+                        const expDate = new Date(expInputVal);
+                        expText = 'EXP: ' + formatDate(expDate.toISOString());
+                    } else {
+                        const defaultExp = new Date(issued);
+                        defaultExp.setFullYear(defaultExp.getFullYear() + 1);
+                        expText = 'EXP: ' + formatDate(defaultExp.toISOString());
+                    }
+                }
+
+                ctx.save();
+                ctx.font = '12px Arial';
+                ctx.fillStyle = '#000';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                const centerX = qrX + (qrW / 2);
+                if (drawExp && expEnabled) {
+                    const expY = qrY - 6;
+                    const issY = expY - 16;
+                    ctx.fillText(expText, centerX, expY);
+                    ctx.fillText(issText, centerX, issY);
+                } else {
+                    const issY = qrY - 8;
+                    ctx.fillText(issText, centerX, issY);
+                }
+                ctx.restore();
+            } catch (e) {
+                console.warn('Failed to draw ISS/EXP dates:', e);
             }
             if (callback) callback(canvas);
         });
@@ -794,7 +909,55 @@ function _downloadDependentCard(fullName, dob, bloodGroup, cin, photoUrl) {
             highResCtx.fillText('DEPENDENT', 400 * scaleX, 60 * scaleY);
             highResCtx.restore();
             generateQRCode(cin, function(qrImage) {
-                highResCtx.drawImage(qrImage, 460 * scaleX, 290 * scaleX, 100 * scaleX, 100 * scaleY);
+                // Compute properly-scaled QR position/size for high-res canvas
+                const qrXhr = 460 * scaleX;
+                const qrYhr = 290 * scaleY;
+                const qrWhr = 100 * scaleX;
+                const qrHhr = 100 * scaleY;
+                highResCtx.drawImage(qrImage, qrXhr, qrYhr, qrWhr, qrHhr);
+
+                // Draw issuance date and optionally expiry on the high-res card above the QR
+                try {
+                    const issInputVal = document.getElementById('issDate')?.value;
+                    const expElem = document.getElementById('expDate');
+                    const expInputVal = expElem ? expElem.value : null;
+                    let issued = issInputVal ? new Date(issInputVal) : new Date();
+
+                    const drawExp = !(cin.toUpperCase().startsWith('FOP/'));
+                    const expEnabled = expElem ? !expElem.disabled : false;
+
+                    const issText = 'ISS: ' + formatDate(issued.toISOString());
+                    let expText = '';
+                    if (drawExp) {
+                        if (expInputVal) {
+                            const expDate = new Date(expInputVal);
+                            expText = 'EXP: ' + formatDate(expDate.toISOString());
+                        } else {
+                            const defaultExp = new Date(issued);
+                            defaultExp.setFullYear(defaultExp.getFullYear() + 1);
+                            expText = 'EXP: ' + formatDate(defaultExp.toISOString());
+                        }
+                    }
+
+                    highResCtx.save();
+                    highResCtx.font = `${12 * scaleY}px Arial`;
+                    highResCtx.fillStyle = '#000';
+                    highResCtx.textAlign = 'center';
+                    highResCtx.textBaseline = 'bottom';
+                    const centerX = qrXhr + (qrWhr / 2);
+                    if (drawExp && expEnabled) {
+                        const expY = qrYhr - (6 * scaleY);
+                        const issY = expY - (16 * scaleY);
+                        highResCtx.fillText(expText, centerX, expY);
+                        highResCtx.fillText(issText, centerX, issY);
+                    } else {
+                        const issY = qrYhr - (8 * scaleY);
+                        highResCtx.fillText(issText, centerX, issY);
+                    }
+                    highResCtx.restore();
+                } catch (e) {
+                    console.warn('Failed to draw high-res ISS/EXP:', e);
+                }
                 // Download as PNG using CIN as filename
                 const dataUrl = highResCanvas.toDataURL('image/png');
                 const link = document.createElement('a');

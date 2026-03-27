@@ -1,6 +1,17 @@
-/* Modern, professional, and responsive styling for the ID Card Portal with green/red branding */
+:root {
+    --primary: #1A237E;
+    --accent: #FFC107;
+    --success: #43A047;
+    --danger: #D32F2F;
+    --bg: #F7F9FC;
+    --surface: #FFFFFF;
+    --muted: #6B7280;
+    --radius: 10px;
+}
+
+/* Modern, professional, and responsive styling for the ID Card Portal */
 body {
-    font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+    font-family: 'Inter', 'Poppins', 'Segoe UI', 'Roboto', Arial, sans-serif;
     background: linear-gradient(135deg, #e8f5e9 0%, #f4f6fb 100%);
     margin: 0;
     padding: 0;
@@ -8,12 +19,39 @@ body {
 }
 
 header {
-    background: #fff;
-    box-shadow: 0 2px 8px rgba(44,62,80,0.07);
-    padding: 20px 0 10px 0;
-    margin-bottom: 10px;
+    background: var(--surface);
+        box-shadow: 0 2px 8px rgba(16, 24, 40, 0.06);
+        padding: 18px 18px;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
 }
 
+/* Header specific tweaks */
+.app-header .logo img {
+    width: 120px;
+    height: auto;
+    display: block
+}
+
+.app-header .title {
+    flex: 1;
+    text-align: center
+}
+
+.app-header .title h1 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--primary)
+}
+
+.app-header .status {
+    font-weight: 600;
+    color: var(--muted);
+    min-width: 160px;
+    text-align: right
+}
 header img {
     filter: drop-shadow(0 0 0 #43a047) drop-shadow(0 0 0 #d32f2f);
     /* fallback for green/red logo, use a green/red logo image for best effect */
@@ -21,28 +59,147 @@ header img {
 
 h1 {
     text-align: center;
-    color: #43a047;
-    font-size: 2.2rem;
-    margin-bottom: 18px;
-    letter-spacing: 1px;
+    color: var(--primary);
+        font-size: 1.6rem;
+        margin: 0;
+        letter-spacing: 0.4px;
     font-weight: 700;
-    text-shadow: 1px 1px 0 #d32f2f, 2px 2px 0 #fff;
 }
 
 .container {
-    max-width: 900px;
+    max-width: 1100px;
     margin: 30px auto 0 auto;
-    background: #fff;
-    border-radius: 18px;
-    box-shadow: 0 8px 32px rgba(44,62,80,0.13);
-    padding: 36px 32px 36px 32px;
+    background: var(--surface);
+        border-radius: 14px;
+        box-shadow: 0 12px 40px rgba(16, 24, 40, 0.06);
+        padding: 28px;
     margin-bottom: 32px;
+    display: grid;
+        grid-template-columns: 360px 1fr;
+        gap: 24px;
 }
 
 .form-container {
     margin-bottom: 24px;
 }
 
+.preview-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px
+}
+
+/* Preview panel styles */
+.preview-panel {
+    background: var(--bg);
+    padding: 16px;
+    border-radius: 12px;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.preview-panel canvas {
+    width: 100%;
+    max-width: 520px;
+    height: auto;
+    border-radius: 8px;
+    border: 1px solid #e3e6f0
+}
+
+.preview-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center
+}
+
+.preview-actions button {
+    padding: 10px 16px;
+    font-size: 0.98rem;
+    border-radius: 8px;
+    margin: 0
+}
+
+.preview-actions .btn-outline {
+    background: transparent;
+    color: var(--primary);
+    border: 1px solid rgba(26, 35, 126, 0.12)
+}
+
+/* Form layout improvements */
+.id-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.form-section {
+    background: transparent;
+    padding: 6px;
+}
+
+.row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.row input {
+    flex: 1;
+}
+
+.photo-preview {
+    max-width: 120px;
+    max-height: 120px;
+    display: block;
+    margin-top: 8px;
+    border-radius: 8px;
+    border: 1px solid #e3e6f0;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-start;
+    margin-top: 8px;
+}
+
+/* Button variants */
+.btn-primary {
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-weight: 700;
+}
+
+.btn-primary:hover {
+    filter: brightness(0.95);
+}
+
+.btn-secondary {
+    background: transparent;
+    border: 1px solid #cfd8dc;
+    color: var(--muted);
+    padding: 8px 12px;
+    border-radius: 8px;
+}
+
+.btn-secondary:hover {
+    background: #f1f5f9;
+}
+
+/* Small helper/hint text shown under fields */
+.field-hint {
+    display: none;
+    color: var(--muted);
+    font-size: 0.95rem;
+    margin-top: 6px;
+}
+
+.field-hint.visible {
+    display: block;
+}
 label {
     font-weight: 500;
     color: #43a047;
@@ -171,6 +328,18 @@ img#photoPreview, img#photoPreview2, .dependent-card img {
         max-width: 100vw;
         height: auto !important;
     }
+                                .container {
+                                    grid-template-columns: 1fr
+                                }
+                
+                                .preview-actions {
+                                    flex-direction: column;
+                                    width: 100%
+                                }
+                
+                                .preview-actions button {
+                                    width: 100%
+                                }
 }
 
 ::-webkit-scrollbar {
