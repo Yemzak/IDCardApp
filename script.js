@@ -142,7 +142,10 @@ function initUiListeners() {
         const down = document.getElementById('downloadBtn');
         const pr = document.getElementById('printBtn');
         if (gen) gen.addEventListener('click', function (e) { e.preventDefault(); if (typeof generateIDCardSafe === 'function') generateIDCardSafe(); else if (typeof generateIDCard === 'function') generateIDCard(); });
-        if (down) down.addEventListener('click', function (e) { e.preventDefault(); try { downloadIDCard(); } catch (err) { console.error(err); displayMessage('Download failed.', true); } });
+        if (down) {
+            down.addEventListener('click', function (e) { e.preventDefault(); try { downloadIDCard(); } catch (err) { console.error(err); displayMessage('Download failed.', true); } });
+            try { down.dataset.downloadBound = 'true'; } catch (e) { /* ignore if dataset unsupported */ }
+        }
         if (pr) pr.addEventListener('click', function (e) { e.preventDefault(); try { printIDCard(); } catch (err) { console.error(err); displayMessage('Print failed.', true); } });
         
         // Watch CIN input: if it starts with FOP/ then clear and disable Expiry Date
@@ -1172,15 +1175,19 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     const dlBtn = document.getElementById('downloadBtn');
     if (dlBtn) {
-        dlBtn.addEventListener('click', function () {
-            try {
-                if (typeof downloadIDCard === 'function') return downloadIDCard();
-                displayMessage('Download function is not available.', true);
-            } catch (err) {
-                console.error('Error invoking downloadIDCard:', err);
-                displayMessage('An error occurred while downloading the ID card.', true);
-            }
-        });
+        // Avoid attaching duplicate listeners if one was already added in initUiListeners
+        if (!dlBtn.dataset.downloadBound) {
+            dlBtn.addEventListener('click', function () {
+                try {
+                    if (typeof downloadIDCard === 'function') return downloadIDCard();
+                    displayMessage('Download function is not available.', true);
+                } catch (err) {
+                    console.error('Error invoking downloadIDCard:', err);
+                    displayMessage('An error occurred while downloading the ID card.', true);
+                }
+            });
+            try { dlBtn.dataset.downloadBound = 'true'; } catch (e) { }
+        }
     }
     const prBtn = document.getElementById('printBtn');
     if (prBtn) {
