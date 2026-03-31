@@ -350,8 +350,18 @@ function generateQRCode(text, callback) {
 }
 
 function downloadIDCard() {
+    // Prevent re-entrant / duplicate downloads within short interval
+    try {
+        if (window._downloadIDCardLocked) {
+            console.warn('downloadIDCard ignored: already in progress');
+            return;
+        }
+        window._downloadIDCardLocked = true;
+        setTimeout(() => { window._downloadIDCardLocked = false; }, 1500);
+    } catch (e) { /* ignore */ }
     const canvas = document.getElementById('idCardCanvas');
     const cin = document.getElementById('cin').value || 'ID_Card';
+    console.debug('downloadIDCard invoked for', cin);
 
     // Use the template's natural size for high-res download
     let template = new Image();
@@ -383,6 +393,7 @@ function downloadIDCard() {
         document.body.removeChild(link);
     };
 }
+
 
 function printIDCard() {
     const canvas = document.getElementById('idCardCanvas');
@@ -880,6 +891,16 @@ async function searchDependents() {
 }
 
 function _downloadDependentCard(fullName, dob, bloodGroup, cin, photoUrl) {
+    // Prevent duplicate dependent download calls
+    try {
+        if (!window._dependentDownloadLocks) window._dependentDownloadLocks = {};
+        if (window._dependentDownloadLocks[cin]) {
+            console.warn('_downloadDependentCard ignored: already downloading', cin);
+            return;
+        }
+        window._dependentDownloadLocks[cin] = true;
+        setTimeout(() => { try { delete window._dependentDownloadLocks[cin]; } catch (_) {} }, 1500);
+    } catch (e) { /* ignore */ }
     const canvas = document.getElementById('dependentIdCardCanvas');
     const template = new Image();
     template.src = 'template.jpg';
@@ -969,6 +990,7 @@ function _downloadDependentCard(fullName, dob, bloodGroup, cin, photoUrl) {
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
+                console.debug('_downloadDependentCard completed for', cin);
             });
         };
         img.onerror = function () {
