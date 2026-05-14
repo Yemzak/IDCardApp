@@ -390,6 +390,7 @@ function downloadIDCard() {
         link.download = `${cin}.png`;
         document.body.appendChild(link);
         link.click();
+        try { if (typeof incrementDailyDownloadCount === 'function') incrementDailyDownloadCount('download'); } catch (e) { console.warn('Failed to record download count', e); }
         document.body.removeChild(link);
     };
 }
@@ -403,8 +404,57 @@ function printIDCard() {
     printWindow.document.close();
     printWindow.focus();
     printWindow.print();
+    // No download count for print; only downloads are recorded per request
     printWindow.close();
 }
+
+// Record daily print/download counts using localStorage only.
+function incrementDailyDownloadCount() {
+    try {
+        if (!window.localStorage) return;
+        const today = new Date().toISOString().slice(0, 10);
+        const key = 'dailyDownloadCounts';
+        const obj = JSON.parse(localStorage.getItem(key) || '{}');
+        obj[today] = (obj[today] || 0) + 1;
+        localStorage.setItem(key, JSON.stringify(obj));
+        if (typeof updateDailyDownloadDisplay === 'function') updateDailyDownloadDisplay();
+    } catch (e) {
+        console.warn('incrementDailyDownloadCount failed', e);
+    }
+}
+
+// Update a UI element with id `dailyDownloadCount` if present on the page (localStorage-only)
+function updateDailyDownloadDisplay() {
+    try {
+        const el = document.getElementById('dailyDownloadCount');
+        if (!el) return;
+        const today = new Date().toISOString().slice(0, 10);
+        const obj = JSON.parse(localStorage.getItem('dailyDownloadCounts') || '{}');
+        el.textContent = String(obj[today] || 0);
+    } catch (e) {
+        console.warn('updateDailyDownloadDisplay failed', e);
+    }
+}
+
+// Schedule an update at next midnight so the counter resets visually when the date changes
+function scheduleDailyDisplayUpdate() {
+    try {
+        const now = new Date();
+        const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 1);
+        const ms = next - now;
+        setTimeout(function () {
+            try { updateDailyDownloadDisplay(); } catch (e) { }
+            scheduleDailyDisplayUpdate();
+        }, ms);
+    } catch (e) {
+        console.warn('scheduleDailyDisplayUpdate failed', e);
+    }
+}
+
+// Initialize display on load
+window.addEventListener('DOMContentLoaded', function () {
+    try { updateDailyDownloadDisplay(); scheduleDailyDisplayUpdate(); } catch (e) { }
+});
 
 async function generateBulkIDCards() {
     const bulkFileInput = document.getElementById('bulkFile');
