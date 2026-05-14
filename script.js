@@ -225,7 +225,7 @@ function drawIDCard(name, dob, bloodGroup, cin, photoUrl, callback) {
     if (cin.includes('S-EQP')) {
         template.src = 'Template3.png';
     } else if (cin.includes('EQP')) {
-        template.src = 'Template2.jpg';
+        template.src = 'Template2.png';
     } else {
         template.src = 'template.jpg';
     }
@@ -368,7 +368,7 @@ function downloadIDCard() {
     if (cin.includes('S-EQP')) {
         template.src = 'Template3.png';
     } else if (cin.includes('EQP')) {
-        template.src = 'Template2.jpg';
+        template.src = 'Template2.png';
     } else {
         template.src = 'template.jpg';
     }
