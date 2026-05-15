@@ -224,7 +224,7 @@ function drawIDCard(name, dob, bloodGroup, cin, photoUrl, callback) {
     // Use Template3.png for S-EQP, Template2.jpg for EQP, otherwise use template.jpg
     if (cin.includes('S-EQP')) {
         template.src = 'Template3.png';
-    } else if (cin.includes('EQP')) {
+    } else if (cin.includes('BHCPF')) {
         template.src = 'Template2.png';
     } else {
         template.src = 'template.jpg';
@@ -249,19 +249,19 @@ function drawIDCard(name, dob, bloodGroup, cin, photoUrl, callback) {
         // Draw text and QR
         ctx.font = 'bold 24px "Agency FB"';
         ctx.fillStyle = '#000';
-        ctx.fillText(`${name.toUpperCase()}`, 290, 120);
+        ctx.fillText(`${name.toUpperCase()}`, 290, 135);
         ctx.fillText(formatDate(dob), 370, 170);
         ctx.fillText(`${bloodGroup}`, 360, 210);
-        ctx.fillText(`${cin}`, 270, 255);
+        ctx.fillText(`${cin}`, 270, 245);
         generateQRCode(cin, function(qrImage) {
             // Determine QR position and size based on CIN/template
             let qrX, qrY, qrW = 100, qrH = 100;
-            if (cin.includes('S-EQP') || cin.includes('EQP')) {
+            if (cin.includes('S-EQP') || cin.includes('BHCPF')) {
                 qrX = 30;
-                qrY = canvas.height - 130;
+                qrY = canvas.height - 110;
             } else {
-                qrX = 460;
-                qrY = 290;
+                qrX = 450;
+                qrY = 280;
             }
             ctx.drawImage(qrImage, qrX, qrY, qrW, qrH);
 
@@ -367,7 +367,7 @@ function downloadIDCard() {
     let template = new Image();
     if (cin.includes('S-EQP')) {
         template.src = 'Template3.png';
-    } else if (cin.includes('EQP')) {
+    } else if (cin.includes('BHCPF')) {
         template.src = 'Template2.png';
     } else {
         template.src = 'template.jpg';
