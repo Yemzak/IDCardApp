@@ -249,19 +249,19 @@ function drawIDCard(name, dob, bloodGroup, cin, photoUrl, callback) {
         // Draw text and QR
         ctx.font = 'bold 24px "Agency FB"';
         ctx.fillStyle = '#000';
-        ctx.fillText(`${name.toUpperCase()}`, 290, 135);
+        ctx.fillText(`${name.toUpperCase()}`, 290, 120);
         ctx.fillText(formatDate(dob), 370, 170);
         ctx.fillText(`${bloodGroup}`, 360, 210);
-        ctx.fillText(`${cin}`, 270, 245);
+        ctx.fillText(`${cin}`, 270, 255);
         generateQRCode(cin, function(qrImage) {
             // Determine QR position and size based on CIN/template
             let qrX, qrY, qrW = 100, qrH = 100;
             if (cin.includes('S-EQP') || cin.includes('BHCPF')) {
                 qrX = 30;
-                qrY = canvas.height - 110;
+                qrY = canvas.height - 130;
             } else {
-                qrX = 450;
-                qrY = 280;
+                qrX = 460;
+                qrY = 290;
             }
             ctx.drawImage(qrImage, qrX, qrY, qrW, qrH);
 
